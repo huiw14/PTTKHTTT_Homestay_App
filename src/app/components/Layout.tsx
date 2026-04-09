@@ -1,156 +1,152 @@
-import { Link, Outlet, useLocation } from "react-router";
+import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { 
-  Building2, Users, Receipt, CalendarCheck, Home, 
-  LogOut, Settings, Bell, Search, Bed, BookOpen, UserPlus, 
-  FileText, Banknote, ShieldCheck, DoorOpen 
+  LayoutDashboard, 
+  Settings, 
+  Users, 
+  CreditCard, 
+  FileText, 
+  LogOut,
+  Bell,
+  UserCircle
 } from "lucide-react";
-import { cn } from "./ui";
+import { Button } from "./ui/button";
 
-const navItems = [
+// --- CẤU HÌNH MENU CHUẨN THEO ROUTES ---
+const MENU_GROUPS = [
   {
-    module: "Module 1: Quản trị Hệ thống",
-    icon: Settings,
+    title: "Chung",
     items: [
-      { name: "Tài khoản", path: "/admin/accounts" },
-      { name: "Ký túc xá", path: "/admin/branches" },
-      { name: "Phòng/Giường", path: "/admin/rooms" },
-      { name: "Tiện ích/Tài sản", path: "/admin/assets" },
-      { name: "Dịch vụ", path: "/admin/services" },
-      { name: "Chính sách", path: "/admin/policies" },
+      { name: "Tổng quan (Dashboard)", path: "/", icon: LayoutDashboard },
     ]
   },
   {
-    module: "Module 2: Đăng ký & Tư vấn",
-    icon: Users,
+    title: "Quản trị (Module 1)",
     items: [
-      { name: "Khách hàng", path: "/sales/customers" },
-      { name: "Yêu cầu thuê", path: "/sales/requests" },
-      { name: "Tìm phòng", path: "/sales/search" },
-      { name: "Lịch hẹn", path: "/sales/appointments" },
+      { name: "Phòng / Giường", path: "/admin/rooms", icon: Settings },
+      { name: "Tài sản & Tiện ích", path: "/admin/assets", icon: Settings },
+      { name: "Dịch vụ", path: "/admin/services", icon: Settings },
+      { name: "Tài khoản", path: "/admin/accounts", icon: Settings },
     ]
   },
   {
-    module: "Module 3: Đặt cọc",
-    icon: Banknote,
+    title: "Sale & Đặt cọc (Module 2 & 3)",
     items: [
-      { name: "Lập phiếu cọc", path: "/deposits/create" },
-      { name: "Quản lý cọc", path: "/deposits/manage" },
+      { name: "Khách hàng", path: "/sales/customers", icon: Users },
+      { name: "Yêu cầu thuê", path: "/sales/requests", icon: Users },
+      { name: "Phiếu đặt cọc", path: "/deposits/manage", icon: CreditCard },
     ]
   },
   {
-    module: "Module 4: Hợp đồng & Nhận phòng",
-    icon: FileText,
+    title: "Hợp đồng & Trả phòng (Module 4 & 5)",
     items: [
-      { name: "Thành viên", path: "/contracts/members" },
-      { name: "Hợp đồng", path: "/contracts/manage" },
-      { name: "Thu tiền kỳ đầu", path: "/contracts/receipts" },
-      { name: "Bàn giao phòng", path: "/contracts/handover" },
-    ]
-  },
-  {
-    module: "Module 5: Trả phòng & Thanh lý",
-    icon: DoorOpen,
-    items: [
-      { name: "Lịch trả phòng", path: "/checkout/schedules" },
-      { name: "Kiểm tra hiện trạng", path: "/checkout/inspection" },
-      { name: "Thanh toán", path: "/checkout/slips" },
-      { name: "Thanh lý", path: "/checkout/liquidation" },
+      { name: "Quản lý Hợp đồng", path: "/contracts/manage", icon: FileText },
+      { name: "Thu tiền kỳ đầu", path: "/contracts/receipts", icon: CreditCard },
+      { name: "Lịch trả phòng", path: "/checkout/schedules", icon: LogOut },
+      { name: "Thanh lý & Đối soát", path: "/checkout/slips", icon: LogOut },
     ]
   }
 ];
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Xóa token/session ở đây (nếu có)
+    navigate("/login");
+  };
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
-      {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
-        <div className="p-6 border-b border-slate-200">
-          <div className="flex items-center gap-2 font-bold text-xl text-blue-600">
-            <Building2 className="w-6 h-6" />
-            <span>HomeStay Pro</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">Hệ thống quản lý toàn diện</p>
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+      
+      {/* ================= SIDEBAR (MENU TRÁI) ================= */}
+      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
+          <span className="text-xl font-bold text-white tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
+            HomeStay Pro
+          </span>
         </div>
-        
-        <nav className="flex-1 p-4 space-y-6">
-          <Link 
-            to="/" 
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium",
-              location.pathname === "/" ? "bg-blue-50 text-blue-600" : "text-slate-700 hover:bg-slate-100"
-            )}
-          >
-            <Home className="w-4 h-4" /> Tổng quan
-          </Link>
 
-          {navItems.map((group, idx) => (
-            <div key={idx} className="space-y-2">
-              <h4 className="flex items-center gap-2 px-3 text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">
-                <group.icon className="w-4 h-4 text-slate-500" />
-                {group.module}
-              </h4>
+        {/* Danh sách Menu */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6 custom-scrollbar">
+          {MENU_GROUPS.map((group, index) => (
+            <div key={index}>
+              <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                {group.title}
+              </p>
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const isActive = location.pathname.startsWith(item.path);
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={cn(
-                        "block px-3 py-1.5 ml-4 rounded-md transition-colors text-sm",
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                         isActive 
-                          ? "bg-blue-50 text-blue-700 font-medium" 
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      )}
+                          ? "bg-blue-600 text-white font-medium shadow-md" 
+                          : "hover:bg-slate-800 hover:text-white"
+                      }`}
                     >
-                      {item.name}
+                      <Icon size={18} className={isActive ? "text-white" : "text-slate-400"} />
+                      <span className="text-sm">{item.name}</span>
                     </Link>
                   );
                 })}
               </div>
             </div>
           ))}
-        </nav>
+        </div>
+
+        {/* User Info & Đăng xuất (Đáy Sidebar) */}
+        <div className="p-4 border-t border-slate-800">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-slate-800"
+            onClick={handleLogout}
+          >
+            <LogOut size={18} className="mr-2" />
+            Đăng xuất
+          </Button>
+        </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ================= KHU VỰC NỘI DUNG CHÍNH ================= */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Topbar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-          <div className="flex-1 flex items-center">
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Tìm kiếm nhanh..." 
-                className="h-9 w-full rounded-md border border-slate-200 bg-slate-50 pl-9 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+        
+        {/* TOPBAR (THANH TIÊU ĐỀ) */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-4">
-            <button className="relative text-slate-500 hover:text-slate-700">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">3</span>
-            </button>
-            <div className="h-6 w-px bg-slate-200 mx-2"></div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-medium leading-none">Hoàng Minh Tuấn</p>
-                <p className="text-xs text-slate-500 mt-1">Admin</p>
+            <h1 className="text-lg font-semibold text-slate-800">
+              {/* Lấy tên menu hiện tại hiển thị lên Header */}
+              {MENU_GROUPS.flatMap(g => g.items).find(i => i.path === location.pathname)?.name || "Bảng điều khiển"}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="rounded-full relative">
+              <Bell size={18} className="text-slate-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </Button>
+            
+            <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-medium text-slate-700">Thành Minh</p>
+                <p className="text-xs text-slate-500">Quản trị viên</p>
               </div>
-              <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
-                AD
-              </div>
+              <UserCircle size={32} className="text-slate-400" />
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-auto bg-slate-50 p-6">
-          <Outlet />
+        {/* NỘI DUNG MODULE CỦA CÁC THÀNH VIÊN SẼ RENDER Ở ĐÂY */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="max-w-7xl mx-auto h-full">
+            <Outlet />
+          </div>
         </div>
+
       </main>
     </div>
   );
