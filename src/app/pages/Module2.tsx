@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input } from "../components/ui";
-import { customers, rooms, branches } from "../data/mockData";
+import { MOCK_CUSTOMERS, MOCK_ROOMS, MOCK_BRANCHES } from "../data/mockData";
 import { Plus, Edit2, Search, Calendar, Filter, Phone, Mail } from "lucide-react";
 
 const PageHeader = ({ title, description, btnText }: { title: string, description: string, btnText?: string }) => (
@@ -26,17 +25,17 @@ export function SalesCustomers() {
           <Table>
             <TableHeader><TableRow><TableHead>Mã KH</TableHead><TableHead>Họ Tên</TableHead><TableHead>Liên hệ</TableHead><TableHead>Nhu cầu ghi nhận</TableHead><TableHead>Trạng thái</TableHead><TableHead>Thao tác</TableHead></TableRow></TableHeader>
             <TableBody>
-              {customers.map((c) => (
+              {MOCK_CUSTOMERS.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.id}</TableCell>
-                  <TableCell>{c.name}</TableCell>
+                  <TableCell>{c.fullName}</TableCell>
                   <TableCell>
                     <div className="flex flex-col text-sm">
                       <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.phone}</span>
                       <span className="flex items-center gap-1 text-slate-500"><Mail className="w-3 h-3" /> {c.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={c.demand}>{c.demand}</TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={c.cccd}>{c.cccd}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium 
                       ${c.status === 'Đã cọc' ? 'bg-green-100 text-green-700' : 
@@ -99,7 +98,7 @@ export function SalesSearch() {
             <label className="text-xs font-medium text-slate-500">Cơ sở / Chi nhánh</label>
             <select className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Tất cả cơ sở</option>
-              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              {MOCK_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div className="space-y-1">
@@ -131,19 +130,19 @@ export function SalesSearch() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {rooms.filter(r => r.status === 'Còn trống').map(r => (
+        {MOCK_ROOMS.filter(r => r.status === 'Trống').map(r => (
           <Card key={r.id} className="overflow-hidden flex flex-col">
             <div className="h-32 bg-slate-200 flex items-center justify-center relative">
                <span className="text-slate-400 font-medium">Hình ảnh phòng</span>
                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">
-                 {r.capacity - r.occupied} giường trống
+                 {r.availableBeds} giường trống
                </div>
             </div>
             <CardContent className="p-4 flex-1 flex flex-col">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className="font-bold text-lg">{r.id} - {r.type}</h3>
-                  <p className="text-xs text-slate-500">{branches.find(b => b.id === r.branch)?.name}</p>
+                  <h3 className="font-bold text-lg">{r.id} - {r.name}</h3>
+                  <p className="text-xs text-slate-500">{MOCK_BRANCHES.find(b => b.id === r.branchId)?.name}</p>
                 </div>
                 <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded font-medium">{r.gender}</span>
               </div>

@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model APDUNGCS {
+  MaCS      String    @db.VarChar(10)
+  MaKTX     String    @db.VarChar(10)
+  CHINHSACH CHINHSACH @relation(fields: [MaCS], references: [MaCS], onUpdate: NoAction, map: "FK_APDUNGCS_CHINHSACH")
+  KITUCXA   KITUCXA   @relation(fields: [MaKTX], references: [MaKTX], onUpdate: NoAction, map: "FK_APDUNGCS_KITUCXA")
+
+  @@id([MaCS, MaKTX], map: "PK__APDUNGCS__D4986C638FF78283")
+}
+
+model APDUNGDV {
+  MaDV    String  @db.VarChar(10)
+  MaKTX   String  @db.VarChar(10)
+  DICHVU  DICHVU  @relation(fields: [MaDV], references: [MaDV], onUpdate: NoAction, map: "FK_APDUNGDV_DICHVU")
+  KITUCXA KITUCXA @relation(fields: [MaKTX], references: [MaKTX], onUpdate: NoAction, map: "FK_APDUNGDV_KITUCXA")
+
+  @@id([MaDV, MaKTX], map: "PK__APDUNGDV__D498644192BDE084")
+}
+
+model BANGIAOGIUONG {
+  MaHD         String      @db.VarChar(10)
+  MaGiuong     String      @db.VarChar(10)
+  MaTV         String      @db.VarChar(10)
+  MaNV         String      @db.VarChar(10)
+  NgayBanGiao  DateTime    @db.Date
+  ChiSoDienDau Int?
+  GhiChu       String?     @db.NVarChar(200)
+  GIUONG       GIUONG      @relation(fields: [MaGiuong], references: [MaGiuong], onUpdate: NoAction, map: "FK_BANGIAOGIUONG_GIUONG")
+  HOPDONGTHUE  HOPDONGTHUE @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_BANGIAOGIUONG_HOPDONG")
+  NHANVIEN     NHANVIEN    @relation(fields: [MaNV], references: [MaNV], onUpdate: NoAction, map: "FK_BANGIAOGIUONG_NHANVIEN")
+  THANHVIEN    THANHVIEN   @relation(fields: [MaTV], references: [MaTV], onUpdate: NoAction, map: "FK_BANGIAOGIUONG_THANHVIEN")
+
+  @@id([MaHD, MaGiuong], map: "PK__BANGIAOG__FEEC59AD6ECE4E2E")
+}
+
+model BANGIAOTAISAN {
+  MaTS        String      @db.VarChar(10)
+  MaHD        String      @db.VarChar(10)
+  SoLuong     Int
+  NgayBanGiao DateTime    @db.Date
+  HOPDONGTHUE HOPDONGTHUE @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_BANGIAOTAISAN_HOPDONG")
+  TAISAN      TAISAN      @relation(fields: [MaTS], references: [MaTS], onUpdate: NoAction, map: "FK_BANGIAOTAISAN_TAISAN")
+
+  @@id([MaTS, MaHD], map: "PK__BANGIAOT__35575A16FBA8DFF7")
+}
+
+model BIENBANKIEMTRA {
+  MaBBKT         String      @id(map: "PK__BIENBANK__F5AD41B4586FADEF") @db.VarChar(10)
+  MaHD           String      @unique(map: "UQ__BIENBANK__2725A6E14E99B967") @db.VarChar(10)
+  NgayKiemTra    DateTime    @db.Date
+  ChiSoDienCuoi  Int?
+  ChiSoNuocCuoi  Int?
+  TongPhatTaiSan Int         @default(0, map: "DF__BIENBANKI__TongP__151B244E")
+  GhiChu         String?     @db.NVarChar(500)
+  HOPDONGTHUE    HOPDONGTHUE @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_BIENBANKIEMTRA_HOPDONG")
+  PHIEUTRA       PHIEUTRA[]
+}
+
+model CHINHSACH {
+  MaCS     String     @id(map: "PK__CHINHSAC__27258E75276B22D3") @db.VarChar(10)
+  TenCS    String     @db.NVarChar(100)
+  PhanLoai String     @db.NVarChar(30)
+  NoiDung  String?    @db.NVarChar(500)
+  CapNhat  DateTime   @db.Date
+  APDUNGCS APDUNGCS[]
+}
+
+model CHITIETHD {
+  MaHD        String      @db.VarChar(10)
+  MaTV        String      @db.VarChar(10)
+  HOPDONGTHUE HOPDONGTHUE @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_CHITIETHD_HOPDONG")
+  THANHVIEN   THANHVIEN   @relation(fields: [MaTV], references: [MaTV], onUpdate: NoAction, map: "FK_CHITIETHD_THANHVIEN")
+
+  @@id([MaHD, MaTV], map: "PK__CHITIETH__8557F6E7964B0D66")
+}
+
+model DICHVU {
+  MaDV      String     @id(map: "PK__DICHVU__272586576969E759") @db.VarChar(10)
+  TenDV     String     @db.NVarChar(100)
+  GiaTien   Int
+  DonViTinh String     @db.NVarChar(30)
+  CachTinh  String     @db.NVarChar(30)
+  APDUNGDV  APDUNGDV[]
+}
+
+model GIUONG {
+  MaGiuong      String          @id(map: "PK__GIUONG__9C9FF4DCAC206E93") @db.VarChar(10)
+  MaPhong       String          @db.VarChar(10)
+  Gia           Int
+  TrangThai     String          @db.NVarChar(30)
+  BANGIAOGIUONG BANGIAOGIUONG[]
+  PHONG         PHONG           @relation(fields: [MaPhong], references: [MaPhong], onUpdate: NoAction, map: "FK_GIUONG_PHONG")
+  PHIEUDATCOC   PHIEUDATCOC[]
+}
+
+model HOPDONGTHUE {
+  MaHD           String          @id(map: "PK__HOPDONGT__2725A6E0A3325C40") @db.VarChar(10)
+  MaPhieuCoc     String          @unique(map: "UQ__HOPDONGT__00AC24AB38A4CA17") @db.VarChar(10)
+  MaNguoiDaiDien String          @db.VarChar(10)
+  MaPhong        String          @db.VarChar(10)
+  NgayBD         DateTime        @db.Date
+  ChuKyDong      Int
+  SoNguoi        Int
+  TrangThai      String          @db.NVarChar(30)
+  BANGIAOGIUONG  BANGIAOGIUONG[]
+  BANGIAOTAISAN  BANGIAOTAISAN[]
+  BIENBANKIEMTRA BIENBANKIEMTRA?
+  CHITIETHD      CHITIETHD[]
+  PHIEUDATCOC    PHIEUDATCOC     @relation(fields: [MaPhieuCoc], references: [MaPhieuCoc], onUpdate: NoAction, map: "FK_HOPDONGTHUE_PHIEUDATCOC")
+  PHONG          PHONG           @relation(fields: [MaPhong], references: [MaPhong], onUpdate: NoAction, map: "FK_HOPDONGTHUE_PHONG")
+  THANHVIEN      THANHVIEN       @relation(fields: [MaNguoiDaiDien], references: [MaTV], onUpdate: NoAction, map: "FK_HOPDONGTHUE_THANHVIEN_DAIDIEN")
+  LICHTRAPHONG   LICHTRAPHONG[]
+  PHIEUTHUKYDAU  PHIEUTHUKYDAU[]
+  PHIEUTRA       PHIEUTRA?
+}
+
+model KHACHHANG {
+  MaKH         String         @id(map: "PK__KHACHHAN__2725CF1E88CB6F0E") @db.VarChar(10)
+  HoTen        String         @db.NVarChar(100)
+  NgaySinh     DateTime       @db.Date
+  GioiTinh     String         @db.NVarChar(5)
+  Email        String         @unique(map: "UQ__KHACHHAN__A9D10534D8B4FE43") @db.VarChar(100)
+  SDT          String         @unique(map: "UQ__KHACHHAN__CA1930A5E037BE40") @db.VarChar(20)
+  QuocTich     String?        @db.NVarChar(50)
+  CCCD         String?        @unique(map: "UQ__KHACHHAN__A955A0AA250340FB") @db.VarChar(20)
+  TrangThai    String         @default("N'Đang tư vấn'", map: "DF__KHACHHANG__Trang__60A75C0F") @db.NVarChar(30)
+  LICHXEMPHONG LICHXEMPHONG[]
+  PHIEUDATCOC  PHIEUDATCOC[]
+  YEUCAU       YEUCAU[]
+}
+
+model KITUCXA {
+  MaKTX     String     @id(map: "PK__KITUCXA__3BDE216E5F51D87B") @db.VarChar(10)
+  TenKTX    String     @db.NVarChar(100)
+  DiaChi    String     @db.NVarChar(200)
+  SucChua   Int
+  GioiTinh  String?    @db.NVarChar(10)
+  TrangThai String     @db.NVarChar(30)
+  APDUNGCS  APDUNGCS[]
+  APDUNGDV  APDUNGDV[]
+  PHONG     PHONG[]
+}
+
+model LICHTRAPHONG {
+  MaYC        String      @id(map: "PK__LICHTRAP__272331258BD4153F") @db.VarChar(10)
+  MaHD        String      @db.VarChar(10)
+  NgayBaoOut  DateTime    @db.Date
+  LyDo        String?     @db.NVarChar(200)
+  TrangThai   String      @db.NVarChar(30)
+  HOPDONGTHUE HOPDONGTHUE @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_LICHTRAPHONG_HOPDONG")
+}
+
+model LICHXEMPHONG {
+  MaLich        String    @id(map: "PK__LICHXEMP__728A9AE9C1320262") @db.VarChar(10)
+  ThoiGian      DateTime  @db.DateTime
+  MaKH          String    @db.VarChar(10)
+  MaPhong       String?   @db.VarChar(10)
+  KhuVucMuonXem String?   @db.NVarChar(100)
+  KetQua        String?   @db.NVarChar(100)
+  TrangThai     String    @db.NVarChar(30)
+  KHACHHANG     KHACHHANG @relation(fields: [MaKH], references: [MaKH], onUpdate: NoAction, map: "FK_LICHXEMPHONG_KHACHHANG")
+  PHONG         PHONG?    @relation(fields: [MaPhong], references: [MaPhong], onDelete: NoAction, onUpdate: NoAction, map: "FK_LICHXEMPHONG_PHONG")
+}
+
+model NHANVIEN {
+  MaNV          String          @id(map: "PK__NHANVIEN__2725D70AEBF11B76") @db.VarChar(10)
+  HoTen         String          @db.NVarChar(100)
+  VaiTro        String          @db.NVarChar(50)
+  Email         String          @unique(map: "UQ__NHANVIEN__A9D10534403B832F") @db.VarChar(100)
+  TrangThai     String          @default("N'Active'", map: "DF__NHANVIEN__TrangT__398D8EEE") @db.NVarChar(30)
+  BANGIAOGIUONG BANGIAOGIUONG[]
+}
+
+model PHIEUDATCOC {
+  MaPhieuCoc     String       @id(map: "PK__PHIEUDAT__00AC24AAF5152A6C") @db.VarChar(10)
+  MaKH           String       @db.VarChar(10)
+  LoaiCoc        String       @db.NVarChar(10)
+  MaPhong        String       @db.VarChar(10)
+  MaGiuong       String?      @db.VarChar(10)
+  SoThangCoc     Int          @default(2, map: "DF__PHIEUDATC__SoTha__6E01572D")
+  SoLuongGiuong  Int          @default(1, map: "DF__PHIEUDATC__SoLuo__6FE99F9F")
+  DonGiaThang    Int
+  KhoanThanhToan Int?
+  NgayLap        DateTime     @default(dbgenerated("CONVERT([date],getdate())"), map: "DF__PHIEUDATC__NgayL__72C60C4A") @db.Date
+  TrangThai      String       @db.NVarChar(30)
+  HOPDONGTHUE    HOPDONGTHUE?
+  GIUONG         GIUONG?      @relation(fields: [MaGiuong], references: [MaGiuong], onDelete: NoAction, onUpdate: NoAction, map: "FK_PHIEUDATCOC_GIUONG")
+  KHACHHANG      KHACHHANG    @relation(fields: [MaKH], references: [MaKH], onUpdate: NoAction, map: "FK_PHIEUDATCOC_KHACHHANG")
+  PHONG          PHONG        @relation(fields: [MaPhong], references: [MaPhong], onUpdate: NoAction, map: "FK_PHIEUDATCOC_PHONG")
+}
+
+model PHIEUTHUKYDAU {
+  MaPT        String      @id(map: "PK__PHIEUTHU__2725E7F65EEDE9B9") @db.VarChar(10)
+  MaHD        String      @db.VarChar(10)
+  NoiDung     String      @db.NVarChar(200)
+  SoTien      Int
+  NgayLap     DateTime    @db.Date
+  TrangThai   String      @db.NVarChar(20)
+  HOPDONGTHUE HOPDONGTHUE @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_PHIEUTHUKYDAU_HOPDONG")
+}
+
+model PHIEUTRA {
+  MaPhieuTra     String          @id(map: "PK__PHIEUTRA__1D880A469BDDD310") @db.VarChar(10)
+  MaHD           String          @unique(map: "UQ__PHIEUTRA__2725A6E1F26DB8F4") @db.VarChar(10)
+  MaBBKT         String?         @db.VarChar(10)
+  NgayTra        DateTime        @db.Date
+  KhauTru        Int             @default(0, map: "DF__PHIEUTRA__KhauTr__19DFD96B")
+  HoanCoc        Int             @default(0, map: "DF__PHIEUTRA__HoanCo__1BC821DD")
+  ThanhToanThem  Int             @default(0, map: "DF__PHIEUTRA__ThanhT__1DB06A4F")
+  TrangThai      String          @db.NVarChar(30)
+  BIENBANKIEMTRA BIENBANKIEMTRA? @relation(fields: [MaBBKT], references: [MaBBKT], onDelete: NoAction, onUpdate: NoAction, map: "FK_PHIEUTRA_BIENBANKIEMTRA")
+  HOPDONGTHUE    HOPDONGTHUE     @relation(fields: [MaHD], references: [MaHD], onUpdate: NoAction, map: "FK_PHIEUTRA_HOPDONG")
+}
+
+model PHONG {
+  MaPhong      String         @id(map: "PK__PHONG__20BD5E5BD58AC9D7") @db.VarChar(10)
+  MaKTX        String         @db.VarChar(10)
+  LoaiPhong    String         @db.NVarChar(50)
+  Gia          Int
+  GioiTinh     String         @db.NVarChar(10)
+  SucChua      Int
+  SoNguoiDangO Int            @default(0, map: "DF__PHONG__SoNguoiDa__44FF419A")
+  TrangThai    String         @db.NVarChar(30)
+  GIUONG       GIUONG[]
+  HOPDONGTHUE  HOPDONGTHUE[]
+  LICHXEMPHONG LICHXEMPHONG[]
+  PHIEUDATCOC  PHIEUDATCOC[]
+  KITUCXA      KITUCXA        @relation(fields: [MaKTX], references: [MaKTX], onUpdate: NoAction, map: "FK_PHONG_KITUCXA")
+}
+
+model TAISAN {
+  MaTS          String          @id(map: "PK__TAISAN__272500786501EE0F") @db.VarChar(10)
+  Ten           String          @db.NVarChar(100)
+  SoLuong       Int
+  DonVi         String          @db.NVarChar(30)
+  HienTrang     String          @db.NVarChar(30)
+  BANGIAOTAISAN BANGIAOTAISAN[]
+}
+
+model THANHVIEN {
+  MaTV          String          @id(map: "PK__THANHVIE__2725007B1C78D83F") @db.VarChar(10)
+  HoTen         String          @db.NVarChar(100)
+  NgaySinh      DateTime        @db.Date
+  GioiTinh      String          @db.NVarChar(5)
+  Email         String?         @unique(map: "UQ__THANHVIE__A9D105346A07D412") @db.VarChar(100)
+  SDT           String?         @unique(map: "UQ__THANHVIE__CA1930A54996C557") @db.VarChar(20)
+  CCCD          String          @unique(map: "UQ__THANHVIE__A955A0AAE08411F2") @db.VarChar(20)
+  VaiTro        String          @db.NVarChar(50)
+  TinhTrang     String          @db.NVarChar(50)
+  BANGIAOGIUONG BANGIAOGIUONG[]
+  CHITIETHD     CHITIETHD[]
+  HOPDONGTHUE   HOPDONGTHUE[]
+}
+
+model YEUCAU {
+  MaYeuCau       String    @id(map: "PK__YEUCAU__CFA5DF4E8A1617C9") @db.VarChar(10)
+  MaKH           String    @db.VarChar(10)
+  SoLuongNguoi   Int
+  NgaySinhDuKien DateTime? @db.Date
+  LoaiPhong      String?   @db.NVarChar(50)
+  MucGia         Int?
+  TGDuKien       DateTime? @db.Date
+  HinhThucThue   String?   @db.NVarChar(50)
+  TieuChiPhu     String?   @db.NVarChar(500)
+  TrangThai      String    @default("N'Mới'", map: "DF__YEUCAU__TrangTha__66603565") @db.NVarChar(30)
+  KHACHHANG      KHACHHANG @relation(fields: [MaKH], references: [MaKH], onUpdate: NoAction, map: "FK_YEUCAU_KHACHHANG")
+}
