@@ -1,45 +1,60 @@
 # Hệ thống Quản lý Ký túc xá - HomeStay Pro
 
-Tài liệu hướng dẫn và quy định làm việc dành cho nhóm phát triển dự án PTTKHTTT. Yêu cầu toàn bộ thành viên đọc kỹ trước khi bắt đầu viết code.
+Tài liệu hướng dẫn cài đặt và quy định làm việc dành cho nhóm phát triển dự án PTTKHTTT.
 
-## 1. Hướng dẫn cài đặt và khởi chạy dự án
-
-Dự án sử dụng React, Vite, Tailwind CSS v4 và shadcn/ui.
-
-Sau khi clone source code về máy, mở Terminal tại thư mục dự án và chạy các lệnh sau:
-
-**Bước 1: Cài đặt các thư viện cần thiết (Chỉ cần chạy lần đầu hoặc khi có thư viện mới)**
-```bash
-npm install
-```
-
-**Bước 2: Khởi chạy Server ở môi trường phát triển (Local)**
-```bash
-npm run dev
-```
-Truy cập vào đường dẫn `http://localhost:5173` trên trình duyệt để xem giao diện.
-
-## 2. Quy định làm việc nhóm
-
-Để tránh xung đột mã nguồn (conflict code) và giữ cho giao diện đồng nhất, toàn bộ thành viên phải tuân theo 3 luật sau:
-
-### Luật phân nhánh Git (Branching Rule)
-* **Tuyệt đối không viết code và push trực tiếp lên nhánh `main`.**
-* Mỗi thành viên khi làm việc phải tạo một nhánh mới từ nhánh `main` theo cú pháp: `feature/<tên-module>-<tên-người>`.
-  * *Ví dụ: `feature/module2-vinh`, `feature/module3-khoi`.*
-* Khi hoàn thành tính năng, đẩy nhánh của mình lên GitHub và tạo Pull Request để review.
-
-### Luật sử dụng UI Component
-* Hệ thống đã được cài đặt sẵn 99% các thành phần giao diện chuẩn trong thư mục `src/app/components/ui/` (bao gồm Button, Input, Table, Dialog, Card, Checkbox...).
-* **Cấm tự ý code bằng thẻ HTML thuần** (như `<button>`, `<input>`, `<table>`...) hoặc tự viết CSS riêng biệt cho các thành phần cơ bản. Phải import các component có sẵn ra để sử dụng nhằm đảm bảo toàn bộ giao diện đồng nhất 100%.
-
-### Luật sử dụng Dữ liệu mẫu (Mock Data)
-* Toàn bộ dữ liệu dùng để test giao diện (Bảng, Form, Biểu đồ) phải được lấy từ kho dữ liệu chung là file `src/app/data/mockData.ts`.
-* Cấm tự tạo biến dữ liệu giả rải rác bên trong component của cá nhân. Nếu thiếu trường dữ liệu, hãy thông báo để bổ sung vào file chung.
+## 1. Công nghệ sử dụng
+* **Frontend:** React, TypeScript, Vite, Tailwind CSS v4, shadcn/ui.
+* **Backend:** Node.js, Express, TypeScript.
+* **Database:** SQL Server, Prisma ORM (v7.x).
 
 ---
 
-## 3. Phân công nhiệm vụ chi tiết
+## 2. Hướng dẫn cài đặt & khởi chạy
+
+
+### Bước 1: Thiết lập Database (SQL Server)
+Hệ thống sử dụng cổng cố định **1433** và **Windows Authentication**.
+1. Mở ứng dụng **SQL Server Configuration Manager**.
+2. Bật (Enable) **TCP/IP** trong mục *SQL Server Network Configuration*.
+3. Trong phần Properties của TCP/IP, tab IP Addresses: Xóa trắng ô *TCP Dynamic Ports* và nhập `1433` vào ô *TCP Port* ở dưới cùng.
+4. Restart lại dịch vụ SQL Server.
+5. Mở **SQL Server Management Studio (SSMS)**, chạy file `ScriptDB_03.sql` để tạo Database `HomeStayPro` và dữ liệu mẫu.
+
+### Bước 2: Thiết lập Backend
+Mở một cửa sổ Terminal, di chuyển vào thư mục `server/` và thực hiện:
+1. Chạy lệnh cài đặt thư viện: `npm install`
+2. Tạo file `server/.env` và dán chuỗi kết nối sau vào:
+   ```env
+   DATABASE_URL="sqlserver://localhost:1433;database=HomeStayPro;integratedSecurity=true;trustServerCertificate=true;encrypt=true;"
+   ```
+3. Chạy lệnh đồng bộ Database: `npx prisma generate`
+4. Khởi chạy Backend: `npm run dev`
+*(Thành công: Terminal báo "Hệ thống Backend đang chạy tại http://localhost:5000")*
+
+### Bước 3: Thiết lập Frontend
+Mở một cửa sổ Terminal MỚI, đứng ở thư mục `src/` và thực hiện:
+1. Chạy lệnh cài đặt thư viện: `npm install`
+2. Khởi chạy Frontend: `npm run dev`
+3. Truy cập vào trình duyệt: `http://localhost:5173`
+
+---
+
+## 3. Quy định làm việc nhóm
+
+### Luật phân nhánh Git
+* **Không viết code và push trực tiếp lên nhánh `main`.**
+* Code xong đẩy lên GitHub, báo để review và merge.
+
+### Luật sử dụng UI Component
+* **Không code bằng thẻ HTML thuần** (`<button>`, `<input>`) để đảm bảo giao diện đồng nhất.
+
+### Luật lấy Dữ liệu (Call API)
+* Toàn bộ API Backend được gọi qua `http://localhost:5000/api/...`
+* Trong thời gian Backend chưa có đủ API, tạm thời dùng dữ liệu từ `src/app/data/mockData.ts`.
+
+---
+
+## 4. Phân công nhiệm vụ chi tiết (25 Use-case)
 
 ### Thành viên 1: Thành Minh
 **Phụ trách:** Core UI, Routing & Module 1 (Quản trị hệ thống).
