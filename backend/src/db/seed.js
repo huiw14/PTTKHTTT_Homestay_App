@@ -186,11 +186,11 @@ async function main() {
   await prisma.phieuCoc.createMany({
     data: [
       // KH001 cọc 2 giường P102 (phòng đôi, 2.5tr/giường → cọc = 2tr * 2 tháng * 2 giường)
-      { maPC: "PC001", maKH: "KH001", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-15T10:00:00"), tienCoc: 10000000, trangThai: "DaThanhToan", hanThanhToan: new Date("2025-11-16T10:00:00") },
+      { maPC: "PC001", maKH: "KH001", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-15T10:00:00"), tienCoc: 10000000, trangThai: "DaDuyet", hanThanhToan: new Date("2025-11-16T10:00:00") },
       // KH002 cọc 1 giường P103
-      { maPC: "PC002", maKH: "KH002", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-18T14:00:00"), tienCoc: 3600000,  trangThai: "DaThanhToan", hanThanhToan: new Date("2025-11-19T14:00:00") },
+      { maPC: "PC002", maKH: "KH002", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-18T14:00:00"), tienCoc: 3600000,  trangThai: "DaDuyet", hanThanhToan: new Date("2025-11-19T14:00:00") },
       // KH007 + KH008 cọc P201 (2 giường, 2.8tr/giường)
-      { maPC: "PC003", maKH: "KH007", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2025-12-20T09:00:00"), tienCoc: 11200000, trangThai: "DaThanhToan", hanThanhToan: new Date("2025-12-21T09:00:00") },
+      { maPC: "PC003", maKH: "KH007", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2025-12-20T09:00:00"), tienCoc: 11200000, trangThai: "DaDuyet", hanThanhToan: new Date("2025-12-21T09:00:00") },
       // KH006 cọc 1 giường P104 - Chờ duyệt
       { maPC: "PC004", maKH: "KH006", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-10T08:00:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-12T08:00:00") },
       // KH003 cọc phòng P104 (phòng rỗng, 4 giường) - Chờ duyệt

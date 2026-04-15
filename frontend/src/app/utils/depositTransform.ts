@@ -4,6 +4,11 @@
 export function transformBackendDeposit(backendDeposit: any) {
   // Get customer name from backend
   const customerName = backendDeposit.khachHang?.hoTen || `KH ${backendDeposit.maKH}`;
+  const customerPhone = backendDeposit.khachHang?.soDienThoai || "";
+  const customerEmail = backendDeposit.khachHang?.email || "";
+
+  // Get staff name
+  const staffName = backendDeposit.nhanVien?.hoTen || `NV ${backendDeposit.maNV}`;
 
   // Get room info - either from direct phong or from chiTietPhieuCoc
   let roomId = "";
@@ -31,12 +36,18 @@ export function transformBackendDeposit(backendDeposit: any) {
   const bedIds = backendDeposit.chiTietPhieuCoc?.map(
     (ct: any) => ct.maGiuong
   ) || [];
+  
+  // Get beds detail
+  const bedsDetail = backendDeposit.chiTietPhieuCoc?.map((ct: any) => ({
+    bedId: ct.maGiuong,
+    bedName: ct.giuong?.tenGiuong || ct.maGiuong,
+  })) || [];
 
   // Map status (backend format to frontend display)
   const statusMap: { [key: string]: string } = {
     ChoThanhToan: "Chờ duyệt",
     ChoDuyet: "Chờ duyệt",
-    DaThanhToan: "Đã thanh toán",
+    DaDuyet: "Đã duyệt",
     DaDuyet: "Đã duyệt",
     TuDongHuy: "Đã hủy (Quá hạn)",
     HuyThuCong: "Đã hủy (Thủ công)",
@@ -49,16 +60,25 @@ export function transformBackendDeposit(backendDeposit: any) {
     id: backendDeposit.maPC,
     customerId: backendDeposit.maKH,
     customer: customerName,
+    customerName,
+    customerPhone,
+    customerEmail,
+    staffId: backendDeposit.maNV,
+    staffName,
     roomId,
     room: roomName,
+    roomName,
     beds: bedIds,
+    bedsDetail,
     amount: Number(backendDeposit.tienCoc),
     status: displayStatus,
     backendStatus: backendDeposit.trangThai,
     date: new Date(backendDeposit.ngayCoc).toISOString().split("T")[0],
+    deadline: backendDeposit.hanThanhToan,
     expireAt: backendDeposit.hanThanhToan,
     createdBy: backendDeposit.maNV,
     type: isGiuong ? "giường" : "phòng",
+    depositType: isGiuong ? "Giường" : "Phòng",
   };
 }
 
@@ -82,7 +102,7 @@ export function mapStatusToBackend(frontendStatus: string): string {
   const statusMap: { [key: string]: string } = {
     "Chờ duyệt": "ChoThanhToan",
     "Đã duyệt": "DaDuyet",
-    "Đã thanh toán": "DaThanhToan",
+    "Đã duyệt": "DaDuyet",
     "Đã hủy (Quá hạn)": "TuDongHuy",
     "Đã hủy (Thủ công)": "HuyThuCong",
     "Đã hủy": "DaHuy",

@@ -130,4 +130,21 @@ export const depositService = {
 
     return response.json();
   },
+
+  /**
+   * POST /api/deposits/:id/approve - Approve payment (change status to DaDuyet)
+   */
+  async approvePayment(id: string) {
+    const response = await fetch(`${API_BASE}/deposits/${id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to approve payment');
+    }
+
+    return response.json();
+  },
 };

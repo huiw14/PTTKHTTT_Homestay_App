@@ -7,7 +7,7 @@ const statements = [
   `CREATE OR REPLACE FUNCTION fn_cap_nhat_giuong_khi_coc()
    RETURNS TRIGGER AS $$
    BEGIN
-     IF NEW."trangThai" = 'DaThanhToan' AND OLD."trangThai" != 'DaThanhToan' THEN
+     IF NEW."trangThai" = 'DaDuyet' AND OLD."trangThai" != 'DaDuyet' THEN
        UPDATE "Giuong" g
        SET "trangThai" = 'DaCoc'
        FROM "ChiTietPhieuCoc" ct
@@ -156,7 +156,7 @@ async function main() {
 
   console.log("✅ Triggers đã được áp dụng thành công!");
   console.log("─────────────────────────────────────────────");
-  console.log("  trg_cap_nhat_giuong_khi_coc     (PhieuCoc → DaThanhToan)");
+  console.log("  trg_cap_nhat_giuong_khi_coc     (PhieuCoc → DaDuyet)");
   console.log("  trg_reset_giuong_khi_huy_coc    (PhieuCoc → TuDongHuy/HuyThuCong)");
   console.log("  trg_cap_nhat_giuong_khi_nhan_phong (ThanhVien INSERT)");
   console.log("  trg_reset_phong_khi_thanh_ly    (ThanhLyHD INSERT)");

@@ -15,6 +15,9 @@ router.post('/', depositController.createDeposit);
 // Send payment request email
 router.post('/:id/send-payment-request', depositController.sendPaymentRequest);
 
+// Approve payment (duyệt thanh toán)
+router.post('/:id/approve', depositController.approvePayment);
+
 // Update status deposit
 router.put('/:id', depositController.updateDeposit);
 

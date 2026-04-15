@@ -156,9 +156,11 @@ export const getDepositDetail = async (req, res) => {
 export const createDeposit = async (req, res) => {
   try {
     const { maKH, maNV, maCN, tienCoc, beds = [] } = req.body;
+    
+    console.log('📝 createDeposit request:', { maKH, maNV, maCN, tienCoc, beds });
 
     // Validate input
-    if (!maKH || !maNV || !maCN || !tienCoc) {
+    if (!maKH || !maNV || !maCN || tienCoc === undefined || tienCoc === null) {
       return res.status(400).json({
         success: false,
         message: 'Thiếu thông tin bắt buộc: maKH, maNV, maCN, tienCoc',
@@ -193,7 +195,7 @@ export const createDeposit = async (req, res) => {
         maKH,
         maNV,
         maCN,
-        tienCoc: BigInt(tienCoc),
+        tienCoc: parseInt(tienCoc),
         trangThai: 'ChoThanhToan',
         ngayCoc,
         hanThanhToan,
@@ -223,6 +225,12 @@ export const createDeposit = async (req, res) => {
           maGiuong,
         })),
       });
+
+      // Update trạng thái giường → DaCoc
+      await prisma.giuong.updateMany({
+        where: { maGiuong: { in: beds } },
+        data: { trangThai: 'DaCoc' },
+      });
     }
 
     // Get full deposit info
@@ -244,6 +252,9 @@ export const createDeposit = async (req, res) => {
       data: fullDeposit,
     });
   } catch (error) {
+    console.error('❌ Error in createDeposit:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Lỗi tạo phiếu cọc',
@@ -253,9 +264,75 @@ export const createDeposit = async (req, res) => {
 };
 
 /**
+ * POST /api/deposits/:id/approve - Duyệt thanh toán (chuyển từ ChoThanhToan → DaDuyet)
+ */
+export const approvePayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify phiếu cọc tồn tại
+    const deposit = await prisma.phieuCoc.findUnique({
+      where: { maPC: id },
+      include: {
+        khachHang: true,
+        nhanVien: true,
+        chiNhanh: true,
+        phong: true,
+        chiTietPhieuCoc: {
+          include: { giuong: { include: { phong: true } } },
+        },
+      },
+    });
+
+    if (!deposit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Phiếu cọc không tồn tại',
+      });
+    }
+
+    // Chỉ duyệt được nếu đang ở trạng thái "ChoThanhToan" hoặc "ChoDuyet"
+    if (deposit.trangThai !== 'ChoThanhToan' && deposit.trangThai !== 'ChoDuyet') {
+      return res.status(400).json({
+        success: false,
+        message: `Chỉ có thể duyệt phiếu cọc ở trạng thái "Chờ thanh toán" hoặc "Chờ duyệt". Trạng thái hiện tại: ${deposit.trangThai}`,
+      });
+    }
+
+    // Update status to "DaDuyet"
+    const updated = await prisma.phieuCoc.update({
+      where: { maPC: id },
+      data: { trangThai: 'DaDuyet' },
+      include: {
+        khachHang: true,
+        nhanVien: true,
+        chiNhanh: true,
+        phong: true,
+        chiTietPhieuCoc: {
+          include: { giuong: { include: { phong: true } } },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Duyệt phiếu cọc thành công. Phiếu cọc chuyển sang trạng thái "Đã duyệt"',
+      data: updated,
+    });
+  } catch (error) {
+    console.error('❌ Error in approvePayment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi duyệt thanh toán',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * PUT /api/deposits/:id - Cập nhật phiếu cọc
  * Body: { trangThai, ... }
- * Trạng thái: 'ChoThanhToan' | 'DaThanhToan' | 'TuDongHuy' | 'HuyThuCong'
+ * Trạng thái: 'ChoThanhToan' | 'ChoDuyet' | 'DaDuyet' | 'DaHuy' | 'TuDongHuy' | 'HuyThuCong'
  */
 export const updateDeposit = async (req, res) => {
   try {
@@ -277,7 +354,9 @@ export const updateDeposit = async (req, res) => {
     // Danh sách trạng thái hợp lệ
     const validStatuses = [
       'ChoThanhToan',
-      'DaThanhToan',
+      'ChoDuyet',
+      'DaDuyet',
+      'DaHuy',
       'TuDongHuy',
       'HuyThuCong',
     ];
@@ -455,4 +534,5 @@ export default {
   updateDeposit,
   deleteDeposit,
   sendPaymentRequest,
+  approvePayment,
 };

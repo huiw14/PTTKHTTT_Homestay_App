@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui";
-import { deposits as mockDeposits, customers, rooms, beds } from "../data/mockData";
+import { customers, rooms, beds } from "../data/mockData";
 import { Plus, Edit2, CheckCircle, XCircle, Send, Calculator, AlertTriangle, ArrowRight, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useDepositStore } from "../hooks/useDepositStore";
@@ -23,8 +23,6 @@ export function DepositCreate() {
   const [selectedBedIds, setSelectedBedIds] = useState<string[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const { addDeposit } = useDepositStore();
   
@@ -66,8 +64,6 @@ export function DepositCreate() {
     setDepositType(newType);
     setSelectedRoom("");
     setSelectedBedIds([]);
-    setError(null);
-    setSuccessMessage(null);
   };
 
   // Reset bed selections when room changes
@@ -78,10 +74,11 @@ export function DepositCreate() {
 
   // Create deposit via API
   const handleCreateDeposit = async () => {
+    // Prevent double submit
+    if (loading) return;
+    
     try {
       setLoading(true);
-      setError(null);
-      setSuccessMessage(null);
 
       // Validation
       if (!selectedCustomer || !selectedRoom || (depositType === "giường" && selectedBedIds.length === 0)) {
@@ -91,37 +88,48 @@ export function DepositCreate() {
       const bedCount = depositType === "giường" ? selectedBedIds.length : roomInfo?.capacity || 0;
       const totalDeposit = (roomInfo?.price || 0) * 2 * bedCount;
 
+      // Prepare bed list for API
+      let bedList: string[] = [];
+      if (depositType === "giường") {
+        bedList = selectedBedIds;
+      } else {
+        // For "Phòng" type: include all beds in the selected room
+        bedList = beds.filter(b => b.roomId === selectedRoom).map(b => b.id);
+      }
+
       // Call API
       const payload = {
         maKH: selectedCustomer,
         maNV: "NV001", // Current user (mock)
         maCN: "CN001", // Current branch (mock)
         tienCoc: totalDeposit,
-        beds: depositType === "giường" ? selectedBedIds : [],
+        beds: bedList,
       };
 
       const response = await depositService.createDeposit(payload);
 
       if (response.success) {
-        const transformedDeposit = transformBackendDeposit(response.data);
-        await addDeposit(transformedDeposit);
+        toast.success(`✓ Tạo phiếu cọc thành công!\nMã: ${response.data.maPC} | Tiền: ${totalDeposit.toLocaleString()}đ`);
 
-        setSuccessMessage(`✓ Tạo phiếu cọc thành công!\n\nMã phiếu: ${response.data.maPC}\nKhách: ${customerInfo?.name}\nPhòng: ${selectedRoom}\nSố giường: ${bedCount}\nTổng tiền: ${totalDeposit.toLocaleString()}đ`);
+        // Update mock data: mark beds as "Đã cọc" so they won't be available for selection
+        bedList.forEach(bedId => {
+          const bed = beds.find(b => b.id === bedId);
+          if (bed) {
+            bed.status = "Đã cọc";
+          }
+        });
 
         // Reset form
-        setTimeout(() => {
-          setSelectedCustomer("");
-          setSelectedRoom("");
-          setSelectedBedIds([]);
-          setDepositType("giường");
-          setSuccessMessage(null);
-        }, 3000);
+        setSelectedCustomer("");
+        setSelectedRoom("");
+        setSelectedBedIds([]);
+        setDepositType("giường");
       } else {
         throw new Error(response.message || "Tạo phiếu cọc thất bại");
       }
     } catch (err: any) {
       const message = err.message || "Lỗi tạo phiếu cọc";
-      setError(message);
+      toast.error(message);
       console.error("Create deposit error:", err);
     } finally {
       setLoading(false);
@@ -131,20 +139,6 @@ export function DepositCreate() {
   return (
     <div className="space-y-6">
       <PageHeader title="Lập phiếu Đặt cọc" description="Tạo phiếu cọc. Hệ thống tự động tính tiền (Giá thuê 2 tháng x Số giường)." />
-      
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
-          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-start gap-2">
-          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-green-700 whitespace-pre-line">{successMessage}</p>
-        </div>
-      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -309,7 +303,7 @@ export function DepositCreate() {
 
 // Quản lý Cọc
 export function DepositManage() {
-  const { deposits: sessionDeposits, fetchDeposits: fetchFromStore, updateDeposit, loading: storeLoading, error: storeError } = useDepositStore();
+  const { updateDeposit, loading: storeLoading, error: storeError } = useDepositStore();
   const [allDeposits, setAllDeposits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -321,6 +315,11 @@ export function DepositManage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalDeposits, setTotalDeposits] = useState(0);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveDepositId, setApproveDepositId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailDeposit, setDetailDeposit] = useState<any>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const LIMIT = 5;
 
   // Load deposits on mount
@@ -341,80 +340,36 @@ export function DepositManage() {
   const loadDeposits = async () => {
     try {
       setLoading(true);
-      setError(null);
 
-      // Combine mock deposits with backend deposits
-      const backendDeposits: any[] = [];
-      const sessionAndMockDeposits = [...sessionDeposits, ...(mockDeposits || [])];
-      
-      // Fetch from backend API with search, sort, status filter, and pagination
-      try {
-        const response = await depositService.getDeposits({
-          search: searchTerm,
-          sortBy: sortBy,
-          status: statusFilter,
-          page: currentPage,
-          limit: LIMIT,
-        });
-        if (response.success && response.data) {
-          const transformed = (response.data || []).map(transformBackendDeposit);
-          backendDeposits.push(...transformed);
-          // Track pagination info
-          if (response.pagination) {
-            setTotalPages(response.pagination.pages || 0);
-            setTotalDeposits(response.pagination.total || 0);
-          }
+      // Fetch ONLY from backend API with search, sort, status filter, and pagination
+      const response = await depositService.getDeposits({
+        search: searchTerm,
+        sortBy: sortBy,
+        status: statusFilter,
+        page: currentPage,
+        limit: LIMIT,
+      });
+
+      if (response.success && response.data) {
+        const transformed = (response.data || []).map(transformBackendDeposit);
+        setAllDeposits(transformed);
+        
+        // Track pagination info
+        if (response.pagination) {
+          setTotalPages(response.pagination.pages || 0);
+          setTotalDeposits(response.pagination.total || 0);
         }
-      } catch (apiErr) {
-        console.warn("API fetch failed, using mock data only", apiErr);
-      }
-      
-      // If no search term and not using API data, apply client-side filtering on mock data with pagination
-      if (backendDeposits.length > 0) {
-        // Use backend data (already paginated by API)
-        setAllDeposits(backendDeposits);
-      } else if (!searchTerm) {
-        // Use mock data with client-side pagination
-        const filtered = sessionAndMockDeposits;
-        const sorted = filtered.sort((a, b) => {
-          switch (sortBy) {
-            case "date-asc":
-              return new Date(a.date).getTime() - new Date(b.date).getTime();
-            case "amount-desc":
-              return b.amount - a.amount;
-            case "amount-asc":
-              return a.amount - b.amount;
-            case "status": {
-              const statusOrder: { [key: string]: number } = {
-                "Chờ duyệt": 1,
-                "Đã duyệt": 2,
-                "Đã thanh toán": 2,
-                "Đã hủy (Quá hạn)": 3,
-                "Đã hủy (Thủ công)": 3,
-                "Đã hủy": 3,
-              };
-              return (statusOrder[a.status] ?? 999) - (statusOrder[b.status] ?? 999);
-            }
-            case "date-desc":
-            default:
-              return new Date(b.date).getTime() - new Date(a.date).getTime();
-          }
-        });
-        setTotalDeposits(sorted.length);
-        setTotalPages(Math.ceil(sorted.length / LIMIT));
-        const paginatedData = sorted.slice((currentPage - 1) * LIMIT, currentPage * LIMIT);
-        setAllDeposits(paginatedData);
       } else {
-        // Search term specified but no results from API
         setAllDeposits([]);
         setTotalDeposits(0);
         setTotalPages(0);
       }
     } catch (err: any) {
-      const message = err.message || "Error loading deposits";
+      toast.error("Lỗi tải danh sách phiếu cọc");
       console.error("Load deposits error:", err);
-      // Still show mock data if there's an error
-      setAllDeposits([...sessionDeposits, ...(mockDeposits || [])]);
+      setAllDeposits([]);
+      setTotalDeposits(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
@@ -470,6 +425,59 @@ export function DepositManage() {
     }
   };
 
+  const handleApprovePaymentConfirm = async () => {
+    if (!approveDepositId) return;
+
+    try {
+      setUpdating(approveDepositId);
+      setError(null);
+
+      const response = await depositService.approvePayment(approveDepositId);
+
+      if (response.success) {
+        // Update local state
+        const transformedDeposit = transformBackendDeposit(response.data);
+        setAllDeposits((prev) =>
+          prev.map((d) => (d.id === approveDepositId ? transformedDeposit : d))
+        );
+        toast.success('✓ Duyệt phiếu cọc thành công. Phiếu cọc chuyển sang "Đã duyệt"');
+        setApproveDialogOpen(false);
+        setApproveDepositId(null);
+      } else {
+        throw new Error(response.message || "Failed to approve payment");
+      }
+    } catch (err: any) {
+      const message = err.message || "Error approving payment";
+      setError(message);
+      toast.error(message);
+      console.error("Approve payment error:", err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleViewDetail = async (depositId: string) => {
+    try {
+      setLoadingDetail(true);
+      setError(null);
+      const response = await depositService.getDepositDetail(depositId);
+      if (response.success) {
+        const transformed = transformBackendDeposit(response.data);
+        setDetailDeposit(transformed);
+        setDetailDialogOpen(true);
+      } else {
+        throw new Error(response.message || "Failed to load deposit detail");
+      }
+    } catch (err: any) {
+      const message = err.message || "Error loading deposit detail";
+      setError(message);
+      toast.error(message);
+      console.error("Load detail error:", err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
   const depositType = selectedDeposit 
     ? Array.isArray(selectedDeposit?.beds) && selectedDeposit?.beds?.length > 0 ? "giường" : "phòng" 
     : null;
@@ -484,6 +492,123 @@ export function DepositManage() {
         title="Quản lý Phiếu cọc" 
         description="Theo dõi, gửi yêu cầu thanh toán, xét duyệt cọc và xử lý hủy." 
       />
+
+      {/* Approve Payment Confirmation Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Xác nhận duyệt phiếu cọc?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Bạn sắp duyệt phiếu cọc <strong>{approveDepositId}</strong>.
+            </p>
+            <p className="text-sm text-slate-600">
+              Sau khi duyệt, trạng thái phiếu cọc sẽ chuyển sang <strong className="text-green-600">"Đã duyệt"</strong>.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setApproveDialogOpen(false)}
+                disabled={updating === approveDepositId}
+              >
+                Hủy
+              </Button>
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleApprovePaymentConfirm}
+                disabled={updating === approveDepositId}
+              >
+                {updating === approveDepositId ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Xác nhận duyệt
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deposit Detail Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-96 overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Chi tiết phiếu cọc {detailDeposit?.id}</DialogTitle>
+          </DialogHeader>
+          {loadingDetail ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <span>Đang tải...</span>
+            </div>
+          ) : detailDeposit ? (
+            <div className="space-y-6">
+              {/* Khách hàng & Nhân viên */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Khách hàng</h4>
+                  <p className="text-sm font-medium">{detailDeposit.customerName}</p>
+                  <p className="text-xs text-slate-500">{detailDeposit.customerPhone}</p>
+                  <p className="text-xs text-slate-500">{detailDeposit.customerEmail || "Chưa có email"}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Nhân viên</h4>
+                  <p className="text-sm font-medium">{detailDeposit.staffName}</p>
+                </div>
+              </div>
+
+              {/* Phòng & Loại */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Phòng</h4>
+                  <p className="text-sm font-medium">{detailDeposit.roomName}</p>
+                  <p className="text-xs text-slate-500">Loại: {detailDeposit.depositType}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Trạng thái</h4>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                    detailDeposit.status === 'Đã duyệt' ? 'bg-green-100 text-green-700' : 
+                    detailDeposit.status === 'Chờ duyệt' ? 'bg-orange-100 text-orange-700' : 
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {detailDeposit.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tiền cọc */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Số tiền cọc</h4>
+                  <p className="text-sm font-bold text-blue-600">{detailDeposit.amount.toLocaleString('vi-VN')} đ</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Ngày lập</h4>
+                  <p className="text-sm">{new Date(detailDeposit.date).toLocaleDateString('vi-VN')}</p>
+                </div>
+              </div>
+
+              {/* Giường chi tiết (nếu có) */}
+              {detailDeposit.bedsDetail && detailDeposit.bedsDetail.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Giường cọc</h4>
+                  <div className="text-sm space-y-1">
+                    {detailDeposit.bedsDetail.map((bed: any, idx: number) => (
+                      <div key={idx} className="text-slate-600">• {bed.bedName}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
       
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
@@ -544,7 +669,7 @@ export function DepositManage() {
               >
                 <option value="">Tất cả trạng thái</option>
                 <option value="ChoThanhToan">Chờ duyệt</option>
-                <option value="DaThanhToan">Đã thanh toán</option>
+                <option value="DaDuyet">Đã duyệt</option>
                 <option value="ChoDuyet">Chờ duyệt</option>
                 <option value="DaDuyet">Đã duyệt</option>
                 <option value="DaHuy">Đã hủy</option>
@@ -692,7 +817,10 @@ export function DepositManage() {
                                   className="text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed" 
                                   title="Duyệt Thanh toán"
                                   disabled={updating === d.id}
-                                  onClick={() => handleStatusUpdate(d.id, "Đã duyệt")}
+                                  onClick={() => {
+                                    setApproveDepositId(d.id);
+                                    setApproveDialogOpen(true);
+                                  }}
                                 >
                                   {updating === d.id ? (
                                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -721,8 +849,13 @@ export function DepositManage() {
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="text-xs text-slate-500"
+                                className="text-xs text-slate-500 hover:text-blue-600"
+                                onClick={() => handleViewDetail(d.id)}
+                                disabled={loadingDetail}
                               >
+                                {loadingDetail ? (
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                ) : null}
                                 Xem chi tiết
                               </Button>
                             )}
