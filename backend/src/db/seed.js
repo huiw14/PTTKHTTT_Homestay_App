@@ -190,6 +190,16 @@ async function main() {
       { maPC: "PC002", maKH: "KH002", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-18T14:00:00"), tienCoc: 3600000,  trangThai: "DaThanhToan", hanThanhToan: new Date("2025-11-19T14:00:00") },
       // KH007 + KH008 cọc P201 (2 giường, 2.8tr/giường)
       { maPC: "PC003", maKH: "KH007", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2025-12-20T09:00:00"), tienCoc: 11200000, trangThai: "DaThanhToan", hanThanhToan: new Date("2025-12-21T09:00:00") },
+      // KH006 cọc 1 giường P104 - Chờ duyệt
+      { maPC: "PC004", maKH: "KH006", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-10T08:00:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-12T08:00:00") },
+      // KH003 cọc phòng P104 (phòng rỗng, 4 giường) - Chờ duyệt
+      { maPC: "PC005", maKH: "KH003", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-05T10:30:00"), tienCoc: 7200000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-07T10:30:00") },
+      // KH004 cọc 3 giường P202 - Đã duyệt
+      { maPC: "PC006", maKH: "KH004", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2026-02-28T14:00:00"), tienCoc: 13500000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-03-02T14:00:00") },
+      // KH005 cọc phòng P101 (phòng đơn, 1 giường) - Đã duyệt
+      { maPC: "PC007", maKH: "KH005", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-02-15T09:00:00"), tienCoc: 7000000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-02-17T09:00:00") },
+      // KH008 cọc phòng P104 (phòng rỗng, 4 giường) - Đã hủy (Quá hạn)
+      { maPC: "PC008", maKH: "KH008", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-01-20T11:00:00"), tienCoc: 7200000, trangThai: "DaHuy", hanThanhToan: new Date("2026-01-22T11:00:00") },
     ],
     skipDuplicates: true,
   });
@@ -201,6 +211,15 @@ async function main() {
       { maPC: "PC002", maGiuong: "G103A" },
       { maPC: "PC003", maGiuong: "G201A" },
       { maPC: "PC003", maGiuong: "G201B" },
+      // PC004 - KH006 cọc 1 giường G104A
+      { maPC: "PC004", maGiuong: "G104A" },
+      // PC005 - KH003 cọc phòng P104 (không có giường riêng cạm, cọc toàn phòng)
+      // PC006 - KH004 cọc 3 giường P202
+      { maPC: "PC006", maGiuong: "G202A" },
+      { maPC: "PC006", maGiuong: "G202B" },
+      { maPC: "PC006", maGiuong: "G202C" },
+      // PC007 - KH005 cọc phòng P101 (không có giường riêng, cọc toàn phòng)
+      // PC008 - KH008 cọc phòng P104 (không có giường riêng, cọc toàn phòng)
     ],
     skipDuplicates: true,
   });

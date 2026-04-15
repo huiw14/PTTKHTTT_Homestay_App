@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui";
 import { deposits as mockDeposits, customers, rooms, beds } from "../data/mockData";
-import { Plus, Edit2, CheckCircle, XCircle, Send, Calculator, AlertTriangle, ArrowRight } from "lucide-react";
+import { Plus, Edit2, CheckCircle, XCircle, Send, Calculator, AlertTriangle, ArrowRight, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDepositStore } from "../hooks/useDepositStore";
+import { transformBackendDeposit, transformToBackendPayload, mapStatusToBackend } from "../utils/depositTransform";
+import { depositService } from "../services/depositService";
 
 const PageHeader = ({ title, description }: { title: string, description: string }) => (
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -19,6 +21,9 @@ export function DepositCreate() {
   const [selectedRoom, setSelectedRoom] = useState("");
   const [selectedBedIds, setSelectedBedIds] = useState<string[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const { addDeposit } = useDepositStore();
   
@@ -60,6 +65,8 @@ export function DepositCreate() {
     setDepositType(newType);
     setSelectedRoom("");
     setSelectedBedIds([]);
+    setError(null);
+    setSuccessMessage(null);
   };
 
   // Reset bed selections when room changes
@@ -68,47 +75,75 @@ export function DepositCreate() {
     setSelectedBedIds([]);
   };
 
-  // Mock create deposit
-  const handleCreateDeposit = () => {
-    if (!selectedCustomer || !selectedRoom || (depositType === "giường" && selectedBedIds.length === 0)) {
-      alert("Vui lòng chọn đầy đủ: khách hàng, phòng" + (depositType === "giường" ? ", và giường" : ""));
-      return;
+  // Create deposit via API
+  const handleCreateDeposit = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      // Validation
+      if (!selectedCustomer || !selectedRoom || (depositType === "giường" && selectedBedIds.length === 0)) {
+        throw new Error("Vui lòng chọn đầy đủ: khách hàng, phòng" + (depositType === "giường" ? ", và giường" : ""));
+      }
+
+      const bedCount = depositType === "giường" ? selectedBedIds.length : roomInfo?.capacity || 0;
+      const totalDeposit = (roomInfo?.price || 0) * 2 * bedCount;
+
+      // Call API
+      const payload = {
+        maKH: selectedCustomer,
+        maNV: "NV001", // Current user (mock)
+        maCN: "CN001", // Current branch (mock)
+        tienCoc: totalDeposit,
+        beds: depositType === "giường" ? selectedBedIds : [],
+      };
+
+      const response = await depositService.createDeposit(payload);
+
+      if (response.success) {
+        const transformedDeposit = transformBackendDeposit(response.data);
+        await addDeposit(transformedDeposit);
+
+        setSuccessMessage(`✓ Tạo phiếu cọc thành công!\n\nMã phiếu: ${response.data.maPC}\nKhách: ${customerInfo?.name}\nPhòng: ${selectedRoom}\nSố giường: ${bedCount}\nTổng tiền: ${totalDeposit.toLocaleString()}đ`);
+
+        // Reset form
+        setTimeout(() => {
+          setSelectedCustomer("");
+          setSelectedRoom("");
+          setSelectedBedIds([]);
+          setDepositType("giường");
+          setSuccessMessage(null);
+        }, 3000);
+      } else {
+        throw new Error(response.message || "Tạo phiếu cọc thất bại");
+      }
+    } catch (err: any) {
+      const message = err.message || "Lỗi tạo phiếu cọc";
+      setError(message);
+      console.error("Create deposit error:", err);
+    } finally {
+      setLoading(false);
     }
-
-    const newDepositId = `DC${Math.floor(Math.random() * 1000).toString().padStart(2, "0")}`;
-    const bedCount = depositType === "giường" ? selectedBedIds.length : roomInfo?.capacity || 0;
-    const totalDeposit = (roomInfo?.price || 0) * 2 * bedCount;
-
-    const newDeposit = {
-      id: newDepositId,
-      customerId: selectedCustomer,
-      customer: customerInfo?.name || "",
-      roomId: selectedRoom,
-      room: selectedRoom,
-      beds: selectedBedIds,
-      amount: totalDeposit,
-      status: "Chờ duyệt",
-      date: new Date().toISOString().split("T")[0],
-      expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      createdBy: "NV02"
-    };
-
-    // Add to session store
-    addDeposit(newDeposit);
-
-    // Show success message
-    alert(`✓ Tạo phiếu cọc thành công!\n\nMã phiếu: ${newDepositId}\nKhách: ${customerInfo?.name}\nPhòng: ${selectedRoom}\nSố giường: ${bedCount}\nTổng tiền: ${totalDeposit.toLocaleString()}đ`);
-    
-    // Reset form
-    setSelectedCustomer("");
-    setSelectedRoom("");
-    setSelectedBedIds([]);
-    setDepositType("giường");
   };
 
   return (
     <div className="space-y-6">
       <PageHeader title="Lập phiếu Đặt cọc" description="Tạo phiếu cọc. Hệ thống tự động tính tiền (Giá thuê 2 tháng x Số giường)." />
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+          <p className="text-sm text-green-700 whitespace-pre-line">{successMessage}</p>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -119,9 +154,10 @@ export function DepositCreate() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Khách hàng đại diện</label>
               <select 
-                className="w-full h-12 px-4 text-sm rounded-md border border-slate-200 bg-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500"
+                className="w-full h-12 px-4 text-sm rounded-md border border-slate-200 bg-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 value={selectedCustomer}
                 onChange={(e) => setSelectedCustomer(e.target.value)}
+                disabled={loading}
               >
                 <option value="">-- Chọn khách hàng --</option>
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>)}
@@ -131,7 +167,7 @@ export function DepositCreate() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Loại</label>
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer disabled:opacity-50">
                   <input 
                     type="radio" 
                     name="depositType" 
@@ -139,6 +175,7 @@ export function DepositCreate() {
                     checked={depositType === "giường"}
                     onChange={(e) => handleTypeChange(e.target.value)}
                     className="w-4 h-4"
+                    disabled={loading}
                   />
                   <span className="text-sm">Giường</span>
                 </label>
@@ -150,6 +187,7 @@ export function DepositCreate() {
                     checked={depositType === "phòng"}
                     onChange={(e) => handleTypeChange(e.target.value)}
                     className="w-4 h-4"
+                    disabled={loading}
                   />
                   <span className="text-sm">Phòng</span>
                 </label>
@@ -159,9 +197,10 @@ export function DepositCreate() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Chọn phòng</label>
               <select 
-                className="w-full h-12 px-4 text-sm rounded-md border border-slate-200 bg-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500"
+                className="w-full h-12 px-4 text-sm rounded-md border border-slate-200 bg-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 value={selectedRoom}
                 onChange={(e) => handleRoomChange(e.target.value)}
+                disabled={loading}
               >
                 <option value="">-- Chọn phòng --</option>
                 {availableRooms.map(r => (
@@ -187,6 +226,7 @@ export function DepositCreate() {
                           checked={selectedBedIds.includes(bed.id)}
                           onChange={() => toggleBedSelection(bed.id)}
                           className="w-4 h-4"
+                          disabled={loading}
                         />
                         <span className="text-sm">{bed.bedName}</span>
                       </label>
@@ -238,9 +278,17 @@ export function DepositCreate() {
                 <Button 
                   className="w-full mt-4 h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
                   onClick={handleCreateDeposit}
-                  disabled={!selectedCustomer || !selectedRoom || (depositType === "giường" && selectedBedIds.length === 0)}
+                  disabled={!selectedCustomer || !selectedRoom || (depositType === "giường" && selectedBedIds.length === 0) || loading}
                 >
-                  Tạo Phiếu & Khóa Phòng <ArrowRight className="w-4 h-4 ml-2"/>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      Tạo Phiếu & Khóa Phòng <ArrowRight className="w-4 h-4 ml-2"/>
+                    </>
+                  )}
                 </Button>
               </>
             ) : (
@@ -260,10 +308,140 @@ export function DepositCreate() {
 
 // Quản lý Cọc
 export function DepositManage() {
-  const { deposits: sessionDeposits } = useDepositStore();
-  const allDeposits = [...sessionDeposits, ...mockDeposits];
+  const { deposits: sessionDeposits, fetchDeposits: fetchFromStore, updateDeposit, loading: storeLoading, error: storeError } = useDepositStore();
+  const [allDeposits, setAllDeposits] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<any>(null);
-  
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc" | "status">("date-desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalDeposits, setTotalDeposits] = useState(0);
+  const LIMIT = 5;
+
+  // Load deposits on mount
+  useEffect(() => {
+    loadDeposits();
+  }, []);
+
+  // Reload deposits when search or sort changes (reset to page 1)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
+  // Load deposits when page, search, or sort changes
+  useEffect(() => {
+    loadDeposits();
+  }, [currentPage, searchTerm, sortBy]);
+
+  const loadDeposits = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Combine mock deposits with backend deposits
+      const backendDeposits: any[] = [];
+      const sessionAndMockDeposits = [...sessionDeposits, ...(mockDeposits || [])];
+      
+      // Fetch from backend API with search, sort, and pagination
+      try {
+        const response = await depositService.getDeposits({
+          search: searchTerm,
+          sortBy: sortBy,
+          page: currentPage,
+          limit: LIMIT,
+        });
+        if (response.success && response.data) {
+          const transformed = (response.data || []).map(transformBackendDeposit);
+          backendDeposits.push(...transformed);
+          // Track pagination info
+          if (response.pagination) {
+            setTotalPages(response.pagination.pages || 0);
+            setTotalDeposits(response.pagination.total || 0);
+          }
+        }
+      } catch (apiErr) {
+        console.warn("API fetch failed, using mock data only", apiErr);
+      }
+      
+      // If no search term and not using API data, apply client-side filtering on mock data with pagination
+      if (backendDeposits.length > 0) {
+        // Use backend data (already paginated by API)
+        setAllDeposits(backendDeposits);
+      } else if (!searchTerm) {
+        // Use mock data with client-side pagination
+        const filtered = sessionAndMockDeposits;
+        const sorted = filtered.sort((a, b) => {
+          switch (sortBy) {
+            case "date-asc":
+              return new Date(a.date).getTime() - new Date(b.date).getTime();
+            case "amount-desc":
+              return b.amount - a.amount;
+            case "amount-asc":
+              return a.amount - b.amount;
+            case "status": {
+              const statusOrder: { [key: string]: number } = {
+                "Chờ duyệt": 1,
+                "Đã duyệt": 2,
+                "Đã hủy (Quá hạn)": 3,
+                "Đã hủy (Thủ công)": 3,
+              };
+              return (statusOrder[a.status] ?? 999) - (statusOrder[b.status] ?? 999);
+            }
+            case "date-desc":
+            default:
+              return new Date(b.date).getTime() - new Date(a.date).getTime();
+          }
+        });
+        setTotalDeposits(sorted.length);
+        setTotalPages(Math.ceil(sorted.length / LIMIT));
+        const paginatedData = sorted.slice((currentPage - 1) * LIMIT, currentPage * LIMIT);
+        setAllDeposits(paginatedData);
+      } else {
+        // Search term specified but no results from API
+        setAllDeposits([]);
+        setTotalDeposits(0);
+        setTotalPages(0);
+      }
+    } catch (err: any) {
+      const message = err.message || "Error loading deposits";
+      console.error("Load deposits error:", err);
+      // Still show mock data if there's an error
+      setAllDeposits([...sessionDeposits, ...(mockDeposits || [])]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (depositId: string, newStatus: string) => {
+    try {
+      setUpdating(depositId);
+      setError(null);
+
+      const backendStatus = mapStatusToBackend(newStatus);
+      const response = await depositService.updateDeposit(depositId, {
+        trangThai: backendStatus,
+      });
+
+      if (response.success) {
+        const transformedDeposit = transformBackendDeposit(response.data);
+        setAllDeposits((prev) =>
+          prev.map((d) => (d.id === depositId ? transformedDeposit : d))
+        );
+      } else {
+        throw new Error(response.message || "Failed to update deposit");
+      }
+    } catch (err: any) {
+      const message = err.message || "Error updating deposit";
+      setError(message);
+      console.error("Update deposit error:", err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const depositType = selectedDeposit 
     ? Array.isArray(selectedDeposit?.beds) && selectedDeposit?.beds?.length > 0 ? "giường" : "phòng" 
     : null;
@@ -279,6 +457,13 @@ export function DepositManage() {
         description="Theo dõi, gửi yêu cầu thanh toán, xét duyệt cọc và xử lý hủy." 
       />
       
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
       <div className="bg-slate-100 border border-slate-200 rounded-md p-3 mb-6 flex items-start gap-2">
         <AlertTriangle className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
         <p className="text-xs text-slate-600">
@@ -286,59 +471,216 @@ export function DepositManage() {
         </p>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader><TableRow><TableHead>Mã Phiếu</TableHead><TableHead>Khách hàng</TableHead><TableHead>Phòng</TableHead><TableHead>Loại</TableHead><TableHead>Số tiền (VND)</TableHead><TableHead>Ngày lập</TableHead><TableHead>Trạng thái</TableHead><TableHead>Thao tác nhanh</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {allDeposits.map((d) => {
-                const depType = Array.isArray(d.beds) && d.beds.length > 0 ? "giường" : "phòng";
-                return (
-                <TableRow key={d.id}>
-                  <TableCell className="font-medium text-blue-600">{d.id}</TableCell>
-                  <TableCell>{d.customer}</TableCell>
-                  <TableCell className={`font-semibold ${depType === "giường" ? "cursor-pointer text-blue-600 hover:underline" : ""}`} onClick={() => depType === "giường" && setSelectedDeposit(d)}>{d.room}</TableCell>
-                  <TableCell><span className="px-2 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700">{depType === "giường" ? "Giường" : "Phòng"}</span></TableCell>
-                  <TableCell className="font-bold text-red-500">{d.amount.toLocaleString()} đ</TableCell>
-                  <TableCell>{d.date}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1
-                      ${d.status === 'Đã duyệt' ? 'bg-green-100 text-green-700' : 
-                        d.status === 'Chờ duyệt' ? 'bg-orange-100 text-orange-700' : 
-                        'bg-red-100 text-red-700'}`}>
-                      {d.status === 'Đã duyệt' && <CheckCircle className="w-3 h-3"/>}
-                      {d.status === 'Chờ duyệt' && <AlertTriangle className="w-3 h-3"/>}
-                      {d.status.includes('hủy') && <XCircle className="w-3 h-3"/>}
-                      {d.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {d.status === 'Chờ duyệt' && (
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="text-xs bg-white text-blue-600 border-blue-200 hover:bg-blue-50" title="Gửi Yêu cầu TT">
-                           <Send className="w-3 h-3 mr-1" /> Gửi KH
-                        </Button>
-                        <Button size="sm" className="text-xs bg-green-600 hover:bg-green-700" title="Duyệt Thanh toán">
-                           <CheckCircle className="w-3 h-3 mr-1" /> Duyệt
-                        </Button>
-                        <Button size="sm" variant="destructive" className="text-xs" title="Hủy phiếu thủ công">
-                           <XCircle className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                    {d.status === 'Đã duyệt' && (
-                       <Button size="sm" variant="outline" className="text-xs text-slate-500">
-                          Xem chi tiết
-                       </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {loading ? (
+        <Card>
+          <CardContent className="p-6 flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-slate-600">Đang tải danh sách...</span>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {/* Search and Sort Controls */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div className="flex-1">
+              <Input
+                placeholder="Tìm kiếm theo mã phiếu, khách hàng hoặc phòng..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="date-desc">Mới nhất</option>
+                <option value="date-asc">Cũ nhất</option>
+                <option value="amount-desc">Tiền cao nhất</option>
+                <option value="amount-asc">Tiền thấp nhất</option>
+                <option value="status">Trạng thái</option>
+              </select>
+              {searchTerm && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearchTerm("")}
+                  className="text-slate-600"
+                >
+                  Xóa tìm kiếm
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Results count and pagination */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="text-sm text-slate-600">
+              {allDeposits.length > 0 ? (
+                <>
+                  Hiển thị phiếu từ <span className="font-semibold">{(currentPage - 1) * LIMIT + 1}</span> đến <span className="font-semibold">{Math.min(currentPage * LIMIT, totalDeposits)}</span> trên <span className="font-semibold">{totalDeposits}</span> tổng số phiếu cọc
+                  {searchTerm && <span className="font-medium"> (Tìm kiếm: "{searchTerm}")</span>}
+                </>
+              ) : (
+                <span>{searchTerm ? "Không tìm thấy phiếu cọc nào" : "Chưa có phiếu cọc nào"}</span>
+              )}
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1 || loading}
+                className="p-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      disabled={loading}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages || totalPages === 0 || loading}
+                className="p-2"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              
+              <span className="text-xs text-slate-500 ml-2">
+                Trang {currentPage} / {totalPages}
+              </span>
+            </div>
+            )}
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader><TableRow><TableHead>Mã Phiếu</TableHead><TableHead>Khách hàng</TableHead><TableHead>Phòng</TableHead><TableHead>Loại</TableHead><TableHead>Số tiền (VND)</TableHead><TableHead>Ngày lập</TableHead><TableHead>Trạng thái</TableHead><TableHead>Thao tác nhanh</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {allDeposits.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                        {searchTerm ? "Không tìm thấy phiếu cọc nào" : "Chưa có phiếu cọc nào"}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    allDeposits.map((d) => {
+                      const depType = Array.isArray(d.beds) && d.beds.length > 0 ? "giường" : "phòng";
+                      return (
+                        <TableRow key={d.id}>
+                          <TableCell className="font-medium text-blue-600">{d.id}</TableCell>
+                          <TableCell>{d.customer}</TableCell>
+                          <TableCell className={`font-semibold ${depType === "giường" ? "cursor-pointer text-blue-600 hover:underline" : ""}`} onClick={() => depType === "giường" && setSelectedDeposit(d)}>{d.room}</TableCell>
+                          <TableCell><span className="px-2 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700">{depType === "giường" ? "Giường" : "Phòng"}</span></TableCell>
+                          <TableCell className="font-bold text-red-500">{d.amount.toLocaleString()} đ</TableCell>
+                          <TableCell>{d.date}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1
+                              ${d.status === 'Đã duyệt' ? 'bg-green-100 text-green-700' : 
+                                d.status === 'Chờ duyệt' ? 'bg-orange-100 text-orange-700' : 
+                                'bg-red-100 text-red-700'}`}>
+                              {d.status === 'Đã duyệt' && <CheckCircle className="w-3 h-3"/>}
+                              {d.status === 'Chờ duyệt' && <AlertTriangle className="w-3 h-3"/>}
+                              {d.status.includes('hủy') && <XCircle className="w-3 h-3"/>}
+                              {d.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {d.status === 'Chờ duyệt' && (
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="text-xs bg-white text-blue-600 border-blue-200 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                  title="Gửi Yêu cầu Thanh toán"
+                                  disabled={updating === d.id}
+                                >
+                                  <Send className="w-3 h-3 mr-1" /> Gửi KH
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  className="text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                  title="Duyệt Thanh toán"
+                                  disabled={updating === d.id}
+                                  onClick={() => handleStatusUpdate(d.id, "Đã duyệt")}
+                                >
+                                  {updating === d.id ? (
+                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                  )}
+                                  Duyệt
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  className="text-xs disabled:opacity-50 disabled:cursor-not-allowed" 
+                                  title="Hủy phiếu thủ công"
+                                  disabled={updating === d.id}
+                                  onClick={() => handleStatusUpdate(d.id, "Đã hủy (Thủ công)")}
+                                >
+                                  {updating === d.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <XCircle className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+                            {d.status === 'Đã duyệt' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="text-xs text-slate-500"
+                              >
+                                Xem chi tiết
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Dialog chi tiết giường */}
       <Dialog open={!!selectedDeposit && depositType === "giường"} onOpenChange={(open: boolean) => !open && setSelectedDeposit(null)}>

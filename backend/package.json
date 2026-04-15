@@ -4,9 +4,6 @@
   "description": "",
   "main": "src/server.js",
   "type": "module",
-  "prisma": {
-    "schema": "src/db/prisma/schema.prisma"
-  },
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
@@ -15,12 +12,12 @@
     "db:studio": "prisma studio",
     "db:seed": "node src/db/seed.js",
     "db:setup": "node src/db/setup.js",
-    "db:reset": "npx prisma db push --force-reset && node src/db/seed.js && node src/db/setup.js"
+    "db:reset": "prisma db push --force-reset && node src/db/seed.js && node src/db/setup.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.0.0",
+    "@prisma/client": "^5.20.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
@@ -31,6 +28,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14",
-    "prisma": "^6.0.0"
+    "prisma": "^5.20.0"
   }
 }
