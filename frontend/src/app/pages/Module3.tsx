@@ -320,6 +320,8 @@ export function DepositManage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailDeposit, setDetailDeposit] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteDepositId, setDeleteDepositId] = useState<string | null>(null);
   const LIMIT = 5;
 
   // Load deposits on mount
@@ -835,7 +837,10 @@ export function DepositManage() {
                                   className="text-xs disabled:opacity-50 disabled:cursor-not-allowed" 
                                   title="Hủy phiếu thủ công"
                                   disabled={updating === d.id}
-                                  onClick={() => handleStatusUpdate(d.id, "Đã hủy (Thủ công)")}
+                                  onClick={() => {
+                                    setDeleteDepositId(d.id);
+                                    setDeleteConfirmOpen(true);
+                                  }}
                                 >
                                   {updating === d.id ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -870,6 +875,51 @@ export function DepositManage() {
           </Card>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-red-600">Xác nhận hủy phiếu cọc</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Bạn chắc chắn muốn hủy phiếu cọc này? Hành động này không thể hoàn tác.
+            </p>
+          </div>
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDeleteConfirmOpen(false);
+                setDeleteDepositId(null);
+              }}
+              disabled={updating === deleteDepositId}
+            >
+              Hủy bỏ
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                if (deleteDepositId) {
+                  await handleStatusUpdate(deleteDepositId, "Đã hủy (Thủ công)");
+                  setDeleteConfirmOpen(false);
+                  setDeleteDepositId(null);
+                }
+              }}
+              disabled={updating === deleteDepositId}
+            >
+              {updating === deleteDepositId ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang xử lý...
+                </>
+              ) : (
+                "Xác nhận hủy"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog chi tiết giường */}
       <Dialog open={!!selectedDeposit && depositType === "giường"} onOpenChange={(open: boolean) => !open && setSelectedDeposit(null)}>
