@@ -35,8 +35,23 @@ export const MOCK_BRANCHES = [
 ];
 
 export const MOCK_ROOMS = [
-  { id: "P101", branchId: "CN01", name: "Phòng 101 (Nam)", area: "Tầng 1", capacity: 4, gender: "Nam", price: 1500000, status: "Trống", availableBeds: 4 },
-  { id: "P102", branchId: "CN01", name: "Phòng 102 (Nữ)", area: "Tầng 1", capacity: 6, gender: "Nữ", price: 1200000, status: "Đang thuê", availableBeds: 1 },
+  { id: "P101", branchId: "CN01", name: "Phòng 101 (Nam)", area: "Tầng 1", capacity: 4, gender: "Nam", price: 1500000, status: "Còn trống" },
+  { id: "P102", branchId: "CN01", name: "Phòng 102 (Nữ)", area: "Tầng 1", capacity: 6, gender: "Nữ", price: 1200000, status: "Đang thuê" },
+];
+
+export const MOCK_BEDS = [
+  // P101 - 4 giường (tất cả còn trống)
+  { id: "G101", roomId: "P101", bedNumber: 1, bedName: "Giường 1", status: "Trống" },
+  { id: "G102", roomId: "P101", bedNumber: 2, bedName: "Giường 2", status: "Trống" },
+  { id: "G103", roomId: "P101", bedNumber: 3, bedName: "Giường 3", status: "Trống" },
+  { id: "G104", roomId: "P101", bedNumber: 4, bedName: "Giường 4", status: "Trống" },
+  // P102 - 6 giường (1 trống, 5 đã thuê)
+  { id: "G201", roomId: "P102", bedNumber: 1, bedName: "Giường 1", status: "Đã thuê" },
+  { id: "G202", roomId: "P102", bedNumber: 2, bedName: "Giường 2", status: "Đã thuê" },
+  { id: "G203", roomId: "P102", bedNumber: 3, bedName: "Giường 3", status: "Đã thuê" },
+  { id: "G204", roomId: "P102", bedNumber: 4, bedName: "Giường 4", status: "Đã thuê" },
+  { id: "G205", roomId: "P102", bedNumber: 5, bedName: "Giường 5", status: "Đã thuê" },
+  { id: "G206", roomId: "P102", bedNumber: 6, bedName: "Giường 6", status: "Trống" },
 ];
 
 export const MOCK_ASSETS = [
@@ -54,8 +69,8 @@ export const MOCK_SERVICES = [
 // MODULE 2: ĐĂNG KÝ & TƯ VẤN (Vinh)
 // ==========================================
 export const MOCK_CUSTOMERS = [
-  { id: "KH01", fullName: "Nguyễn Văn A", phone: "0901234567", cccd: "079099123456", email: "nva@gmail.com", status: "Tiềm năng" },
-  { id: "KH02", fullName: "Trần Thị B", phone: "0909888777", cccd: "079099654321", email: "ttb@gmail.com", status: "Đã cọc" },
+  { id: "KH01", fullName: "Nguyễn Văn A", name: "Nguyễn Văn A", phone: "0901234567", cccd: "079099123456", email: "nva@gmail.com", status: "Tiềm năng" },
+  { id: "KH02", fullName: "Trần Thị B", name: "Trần Thị B", phone: "0909888777", cccd: "079099654321", email: "ttb@gmail.com", status: "Đã cọc" },
 ];
 
 export const MOCK_REQUESTS = [
@@ -70,8 +85,8 @@ export const MOCK_APPOINTMENTS = [
 // MODULE 3: ĐẶT CỌC & GIỮ CHỖ (Khôi)
 // ==========================================
 export const MOCK_DEPOSITS = [
-  { id: "DC01", customerId: "KH01", roomId: "P101", beds: 1, amount: 3000000, status: "Chờ thanh toán", expireAt: "2024-03-26T09:00", createdBy: "NV02" },
-  { id: "DC02", customerId: "KH02", roomId: "P102", beds: 1, amount: 2400000, status: "Đã thanh toán (Giữ chỗ)", expireAt: "2024-03-20T14:00", createdBy: "NV02" },
+  { id: "DC01", customerId: "KH01", customer: "Nguyễn Văn A", roomId: "P101", room: "P101", beds: 1, amount: 3000000, status: "Chờ duyệt", date: "2024-03-20", expireAt: "2024-03-26T09:00", createdBy: "NV02" },
+  { id: "DC02", customerId: "KH02", customer: "Trần Thị B", roomId: "P102", room: "P102", beds: 1, amount: 2400000, status: "Đã duyệt", date: "2024-03-18", expireAt: "2024-03-20T14:00", createdBy: "NV02" },
 ];
 
 // ==========================================
@@ -99,3 +114,22 @@ export const MOCK_CHECKOUT_SCHEDULES = [
 export const MOCK_CHECKOUT_SLIPS = [
   { id: "PC01", contractId: "HD01", depositRefund: 2400000, deduction: 200000, totalPayout: 2200000, status: "Chờ đối soát" },
 ];
+
+// ==========================================
+// EXPORTS ALIASES (without MOCK_ prefix for easier imports)
+// ==========================================
+export const users = MOCK_USERS;
+export const branches = MOCK_BRANCHES;
+export const rooms = MOCK_ROOMS;
+export const beds = MOCK_BEDS;
+export const assets = MOCK_ASSETS;
+export const services = MOCK_SERVICES;
+export const customers = MOCK_CUSTOMERS;
+export const requests = MOCK_REQUESTS;
+export const appointments = MOCK_APPOINTMENTS;
+export const deposits = MOCK_DEPOSITS;
+export const contracts = MOCK_CONTRACTS;
+export const members = MOCK_MEMBERS;
+export const receipts = MOCK_RECEIPTS;
+export const checkoutSchedules = MOCK_CHECKOUT_SCHEDULES;
+export const checkoutSlips = MOCK_CHECKOUT_SLIPS;
