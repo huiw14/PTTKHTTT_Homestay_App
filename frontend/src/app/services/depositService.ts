@@ -147,4 +147,45 @@ export const depositService = {
 
     return response.json();
   },
+
+  /**
+   * GET /api/deposits/available-rooms - Get available rooms from database
+   */
+  async getAvailableRooms(type: 'giường' | 'phòng') {
+    const params = new URLSearchParams();
+    params.append('type', type);
+
+    const response = await fetch(`${API_BASE}/deposits/available-rooms?${params}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch available rooms');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * GET /api/deposits/available-beds - Get available beds/rooms from database
+   */
+  async getAvailableBeds(type: 'giường' | 'phòng', roomId: string) {
+    const params = new URLSearchParams();
+    params.append('type', type);
+    params.append('roomId', roomId);
+
+    const response = await fetch(`${API_BASE}/deposits/available-beds?${params}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch available beds');
+    }
+
+    return response.json();
+  },
 };

@@ -172,8 +172,8 @@ RETURNS void AS $$
 BEGIN
   -- Đánh dấu hủy các phiếu cọc quá hạn
   UPDATE "PhieuCoc"
-  SET "trangThai" = 'TuDongHuy'
-  WHERE "trangThai" = 'ChoThanhToan'
+  SET "trangThai" = 'DaHuy'
+  WHERE "trangThai" = 'ChoDuyet'
     AND "hanThanhToan" < NOW();
 END;
 $$ LANGUAGE plpgsql;

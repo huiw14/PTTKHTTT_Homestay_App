@@ -45,12 +45,8 @@ export function transformBackendDeposit(backendDeposit: any) {
 
   // Map status (backend format to frontend display)
   const statusMap: { [key: string]: string } = {
-    ChoThanhToan: "Chờ duyệt",
     ChoDuyet: "Chờ duyệt",
     DaDuyet: "Đã duyệt",
-    DaDuyet: "Đã duyệt",
-    TuDongHuy: "Đã hủy (Quá hạn)",
-    HuyThuCong: "Đã hủy (Thủ công)",
     DaHuy: "Đã hủy",
   };
 
@@ -100,11 +96,8 @@ export function transformToBackendPayload(formData: any) {
  */
 export function mapStatusToBackend(frontendStatus: string): string {
   const statusMap: { [key: string]: string } = {
-    "Chờ duyệt": "ChoThanhToan",
+    "Chờ duyệt": "ChoDuyet",
     "Đã duyệt": "DaDuyet",
-    "Đã duyệt": "DaDuyet",
-    "Đã hủy (Quá hạn)": "TuDongHuy",
-    "Đã hủy (Thủ công)": "HuyThuCong",
     "Đã hủy": "DaHuy",
   };
 

@@ -201,8 +201,10 @@ async function main() {
       { maPC: "PC007", maKH: "KH005", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-02-15T09:00:00"), tienCoc: 7000000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-02-17T09:00:00") },
       // KH008 cọc phòng P104 (phòng rỗng, 4 giường) - Đã hủy (Quá hạn)
       { maPC: "PC008", maKH: "KH008", maNV: "NV002", maCN: "CN001", maPhong: "P104", ngayCoc: new Date("2026-01-20T11:00:00"), tienCoc: 7200000, trangThai: "DaHuy", hanThanhToan: new Date("2026-01-22T11:00:00") },
-      // KH009 (Test Email User) cọc phòng P101 - Chờ thanh toán (for email testing)
-      { maPC: "PC009", maKH: "KH009", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-04-15T10:00:00"), tienCoc: 7000000, trangThai: "ChoThanhToan", hanThanhToan: new Date("2026-04-17T10:00:00") },
+      // KH009 (Test Email User) cọc phòng P101 - Chờ duyệt
+      { maPC: "PC009", maKH: "KH009", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-04-15T10:00:00"), tienCoc: 7000000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-04-17T10:00:00") },
+      // KH001 cọc 1 giường P102 - Chờ duyệt (Test auto-cancel: created 00:10 on 15/4, should expire 24h later)
+      { maPC: "PC010", maKH: "KH001", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-04-15T00:10:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-04-17T00:10:00") },
     ],
     skipDuplicates: true,
   });
@@ -224,6 +226,8 @@ async function main() {
       // PC007 - cọc phòng (không có chiTietPhieuCoc)
       // PC008 - cọc phòng (không có chiTietPhieuCoc)
       // PC009 - cọc phòng (không có chiTietPhieuCoc)
+      // PC010 - KH001 cọc 1 giường G102B (for auto-cancel testing)
+      { maPC: "PC010", maGiuong: "G102B" },
     ],
     skipDuplicates: true,
   });

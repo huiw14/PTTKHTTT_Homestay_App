@@ -3,6 +3,12 @@ import depositController from '../controllers/depositController.js';
 
 const router = express.Router();
 
+// Get available rooms for creating deposit (real-time from db)
+router.get('/available-rooms', depositController.getAvailableRooms);
+
+// Get available beds for a room (real-time from db)
+router.get('/available-beds', depositController.getAvailableBeds);
+
 // List tất cả deposits (có thể filter)
 router.get('/', depositController.getDeposits);
 

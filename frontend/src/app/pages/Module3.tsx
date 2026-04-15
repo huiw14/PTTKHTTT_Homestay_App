@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui";
-import { customers, rooms, beds } from "../data/mockData";
 import { Plus, Edit2, CheckCircle, XCircle, Send, Calculator, AlertTriangle, ArrowRight, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useDepositStore } from "../hooks/useDepositStore";
@@ -23,30 +22,113 @@ export function DepositCreate() {
   const [selectedBedIds, setSelectedBedIds] = useState<string[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [loading, setLoading] = useState(false);
+  const [availableBedsInRoom, setAvailableBedsInRoom] = useState<any[]>([]);
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [availableRooms, setAvailableRooms] = useState<any[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
   
   const { addDeposit } = useDepositStore();
   
-  const roomInfo = rooms.find(r => r.id === selectedRoom);
+  const roomInfo = availableRooms.find(r => r.roomId === selectedRoom);
   const customerInfo = customers.find(c => c.id === selectedCustomer);
   
-  // Get available beds for selected room
-  const availableBedsInRoom = selectedRoom 
-    ? beds.filter(b => b.roomId === selectedRoom && b.status === "Trống")
-    : [];
+  // Fetch customers on mount
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        setLoadingCustomers(true);
+        // For now, we'll use a simple API call - you may need to create an endpoint for this
+        // Since customers endpoint may not exist, let's handle gracefully
+        const API_BASE = 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE}/customers`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCustomers(data.data || []);
+        } else {
+          // Fallback - customers endpoint may not exist yet
+          setCustomers([]);
+        }
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        setCustomers([]);
+      } finally {
+        setLoadingCustomers(false);
+      }
+    };
+    
+    fetchCustomers();
+  }, []);
   
-  // Filter rooms based on type
-  const availableRooms = depositType === "giường" 
-    ? rooms.filter(r => beds.some(b => b.roomId === r.id && b.status === "Trống"))
-    : rooms.filter(r => beds.every(b => b.roomId !== r.id || b.status === "Trống")); // Only rooms with ALL beds empty
+  // Fetch available rooms when deposit type changes
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        setLoadingRooms(true);
+        const response = await depositService.getAvailableRooms(depositType === "giường" ? "giường" : "phòng");
+        
+        if (response.success) {
+          setAvailableRooms(response.availableRooms || []);
+        }
+      } catch (error) {
+        console.error('Error fetching available rooms:', error);
+        setAvailableRooms([]);
+      } finally {
+        setLoadingRooms(false);
+      }
+    };
+    
+    fetchRooms();
+  }, [depositType]);
+  
+  // Fetch available beds from API when room is selected
+  useEffect(() => {
+    if (!selectedRoom) {
+      setAvailableBedsInRoom([]);
+      return;
+    }
+
+    const fetchAvailableBeds = async () => {
+      try {
+        setLoadingBeds(true);
+        const response = await depositService.getAvailableBeds(depositType === "giường" ? "giường" : "phòng", selectedRoom);
+        
+        if (response.success) {
+          if (depositType === "giường") {
+            // Map giường type response
+            setAvailableBedsInRoom(response.availableBeds || []);
+          } else {
+            // For phòng, if not available, show empty list
+            if (response.isAvailable) {
+              setAvailableBedsInRoom(response.bedsInRoom || []);
+            } else {
+              setAvailableBedsInRoom([]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching available beds:', error);
+        setAvailableBedsInRoom([]);
+      } finally {
+        setLoadingBeds(false);
+      }
+    };
+
+    fetchAvailableBeds();
+  }, [selectedRoom, depositType]);
   
   // Calculate deposit
   let calculatedDeposit = 0;
   if (roomInfo) {
     if (depositType === "giường") {
-      calculatedDeposit = (roomInfo.price * 2) * selectedBedIds.length;
+      calculatedDeposit = (Number(roomInfo.roomPrice) * 2) * selectedBedIds.length;
     } else {
       // For "phòng" type, calculate for all beds in room
-      calculatedDeposit = (roomInfo.price * 2) * roomInfo.capacity;
+      calculatedDeposit = (Number(roomInfo.roomPrice) * 2) * (roomInfo.totalBeds || roomInfo.capacity || 0);
     }
   }
 
@@ -85,17 +167,8 @@ export function DepositCreate() {
         throw new Error("Vui lòng chọn đầy đủ: khách hàng, phòng" + (depositType === "giường" ? ", và giường" : ""));
       }
 
-      const bedCount = depositType === "giường" ? selectedBedIds.length : roomInfo?.capacity || 0;
-      const totalDeposit = (roomInfo?.price || 0) * 2 * bedCount;
-
-      // Prepare bed list for API
-      let bedList: string[] = [];
-      if (depositType === "giường") {
-        bedList = selectedBedIds;
-      } else {
-        // For "Phòng" type: include all beds in the selected room
-        bedList = beds.filter(b => b.roomId === selectedRoom).map(b => b.id);
-      }
+      const bedCount = depositType === "giường" ? selectedBedIds.length : roomInfo?.totalBeds || 0;
+      const totalDeposit = (Number(roomInfo?.roomPrice) || 0) * 2 * bedCount;
 
       // Call API
       const payload = {
@@ -103,7 +176,7 @@ export function DepositCreate() {
         maNV: "NV001", // Current user (mock)
         maCN: "CN001", // Current branch (mock)
         tienCoc: totalDeposit,
-        beds: bedList,
+        beds: selectedBedIds, // API will handle bed updates
       };
 
       const response = await depositService.createDeposit(payload);
@@ -111,19 +184,17 @@ export function DepositCreate() {
       if (response.success) {
         toast.success(`✓ Tạo phiếu cọc thành công!\nMã: ${response.data.maPC} | Tiền: ${totalDeposit.toLocaleString()}đ`);
 
-        // Update mock data: mark beds as "Đã cọc" so they won't be available for selection
-        bedList.forEach(bedId => {
-          const bed = beds.find(b => b.id === bedId);
-          if (bed) {
-            bed.status = "Đã cọc";
-          }
-        });
-
         // Reset form
         setSelectedCustomer("");
         setSelectedRoom("");
         setSelectedBedIds([]);
         setDepositType("giường");
+        
+        // Refresh available rooms
+        const roomsResponse = await depositService.getAvailableRooms("giường");
+        if (roomsResponse.success) {
+          setAvailableRooms(roomsResponse.availableRooms || []);
+        }
       } else {
         throw new Error(response.message || "Tạo phiếu cọc thất bại");
       }
@@ -152,10 +223,20 @@ export function DepositCreate() {
                 className="w-full h-12 px-4 text-sm rounded-md border border-slate-200 bg-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 value={selectedCustomer}
                 onChange={(e) => setSelectedCustomer(e.target.value)}
-                disabled={loading}
+                disabled={loading || loadingCustomers}
               >
                 <option value="">-- Chọn khách hàng --</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>)}
+                {loadingCustomers ? (
+                  <option disabled>Đang tải...</option>
+                ) : customers.length === 0 ? (
+                  <option disabled>Không có khách hàng</option>
+                ) : (
+                  customers.map(c => (
+                    <option key={c.maKH || c.id} value={c.maKH || c.id}>
+                      {c.hoTen || c.name} - {c.soDienThoai || c.phone}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -195,17 +276,23 @@ export function DepositCreate() {
                 className="w-full h-12 px-4 text-sm rounded-md border border-slate-200 bg-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 value={selectedRoom}
                 onChange={(e) => handleRoomChange(e.target.value)}
-                disabled={loading}
+                disabled={loading || loadingRooms}
               >
                 <option value="">-- Chọn phòng --</option>
-                {availableRooms.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {depositType === "giường" 
-                      ? `${r.id} - ${r.price.toLocaleString()}đ/tháng (Còn ${beds.filter(b => b.roomId === r.id && b.status === "Trống").length} trống)`
-                      : `${r.id} - ${r.price.toLocaleString()}đ/tháng (${r.capacity} giường)`
-                    }
-                  </option>
-                ))}
+                {loadingRooms ? (
+                  <option disabled>Đang tải...</option>
+                ) : availableRooms.length === 0 ? (
+                  <option disabled>Không có phòng trống</option>
+                ) : (
+                  availableRooms.map(r => (
+                    <option key={r.roomId} value={r.roomId}>
+                      {depositType === "giường" 
+                        ? `${r.roomId} - ${Number(r.roomPrice).toLocaleString()}đ/tháng (Còn ${r.availableBeds} giường trống)`
+                        : `${r.roomId} - ${Number(r.roomPrice).toLocaleString()}đ/tháng (${r.totalBeds} giường)`
+                      }
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -213,13 +300,17 @@ export function DepositCreate() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Chọn giường</label>
                 <div className="border border-slate-200 rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
-                  {availableBedsInRoom.length > 0 ? (
-                    availableBedsInRoom.map(bed => (
-                      <label key={bed.id} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded">
+                  {loadingBeds ? (
+                    <div className="text-xs text-slate-500 italic py-4 text-center flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Đang tải...
+                    </div>
+                  ) : availableBedsInRoom.length > 0 ? (
+                    availableBedsInRoom.map((bed: any) => (
+                      <label key={bed.bedId} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded">
                         <input 
                           type="checkbox" 
-                          checked={selectedBedIds.includes(bed.id)}
-                          onChange={() => toggleBedSelection(bed.id)}
+                          checked={selectedBedIds.includes(bed.bedId)}
+                          onChange={() => toggleBedSelection(bed.bedId)}
                           className="w-4 h-4"
                           disabled={loading}
                         />
@@ -248,7 +339,7 @@ export function DepositCreate() {
               <>
                 <div className="flex justify-between text-sm pb-2 border-b border-blue-100">
                   <span className="text-slate-600">Giá phòng 1 tháng:</span>
-                  <span className="font-semibold">{roomInfo.price.toLocaleString()} đ</span>
+                  <span className="font-semibold">{Number(roomInfo.roomPrice).toLocaleString()} đ</span>
                 </div>
                 <div className="flex justify-between text-sm pb-2 border-b border-blue-100">
                   <span className="text-slate-600">Số tháng yêu cầu cọc:</span>
@@ -256,7 +347,7 @@ export function DepositCreate() {
                 </div>
                 <div className="flex justify-between text-sm pb-2 border-b border-blue-100">
                   <span className="text-slate-600">{depositType === "giường" ? "Số giường cọc:" : "Tổng giường phòng:"}</span>
-                  <span className="font-semibold">{depositType === "giường" ? `${selectedBedIds.length} giường` : `${roomInfo.capacity} giường`}</span>
+                  <span className="font-semibold">{depositType === "giường" ? `${selectedBedIds.length} giường` : `${roomInfo.totalBeds || roomInfo.capacity} giường`}</span>
                 </div>
                 <div className="flex justify-between text-lg pt-4 pb-2 text-blue-800">
                   <span className="font-bold">Tổng tiền cọc phải đóng:</span>
@@ -670,8 +761,6 @@ export function DepositManage() {
                 className="px-3 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Tất cả trạng thái</option>
-                <option value="ChoThanhToan">Chờ duyệt</option>
-                <option value="DaDuyet">Đã duyệt</option>
                 <option value="ChoDuyet">Chờ duyệt</option>
                 <option value="DaDuyet">Đã duyệt</option>
                 <option value="DaHuy">Đã hủy</option>

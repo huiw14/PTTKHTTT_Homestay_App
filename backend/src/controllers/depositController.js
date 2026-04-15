@@ -196,7 +196,7 @@ export const createDeposit = async (req, res) => {
         maNV,
         maCN,
         tienCoc: parseInt(tienCoc),
-        trangThai: 'ChoThanhToan',
+        trangThai: 'ChoDuyet',
         ngayCoc,
         hanThanhToan,
       },
@@ -264,7 +264,7 @@ export const createDeposit = async (req, res) => {
 };
 
 /**
- * POST /api/deposits/:id/approve - Duyệt thanh toán (chuyển từ ChoThanhToan → DaDuyet)
+ * POST /api/deposits/:id/approve - Duyệt thanh toán (chuyển từ ChoDuyet → DaDuyet)
  */
 export const approvePayment = async (req, res) => {
   try {
@@ -291,11 +291,11 @@ export const approvePayment = async (req, res) => {
       });
     }
 
-    // Chỉ duyệt được nếu đang ở trạng thái "ChoThanhToan" hoặc "ChoDuyet"
-    if (deposit.trangThai !== 'ChoThanhToan' && deposit.trangThai !== 'ChoDuyet') {
+    // Chỉ duyệt được nếu đang ở trạng thái "ChoDuyet"
+    if (deposit.trangThai !== 'ChoDuyet') {
       return res.status(400).json({
         success: false,
-        message: `Chỉ có thể duyệt phiếu cọc ở trạng thái "Chờ thanh toán" hoặc "Chờ duyệt". Trạng thái hiện tại: ${deposit.trangThai}`,
+        message: `Chỉ có thể duyệt phiếu cọc ở trạng thái "Chờ duyệt". Trạng thái hiện tại: ${deposit.trangThai}`,
       });
     }
 
@@ -332,7 +332,7 @@ export const approvePayment = async (req, res) => {
 /**
  * PUT /api/deposits/:id - Cập nhật phiếu cọc
  * Body: { trangThai, ... }
- * Trạng thái: 'ChoThanhToan' | 'ChoDuyet' | 'DaDuyet' | 'DaHuy' | 'TuDongHuy' | 'HuyThuCong'
+ * Trạng thái: 'ChoDuyet' | 'DaDuyet' | 'DaHuy'
  */
 export const updateDeposit = async (req, res) => {
   try {
@@ -353,12 +353,9 @@ export const updateDeposit = async (req, res) => {
 
     // Danh sách trạng thái hợp lệ
     const validStatuses = [
-      'ChoThanhToan',
       'ChoDuyet',
       'DaDuyet',
       'DaHuy',
-      'TuDongHuy',
-      'HuyThuCong',
     ];
 
     if (trangThai && !validStatuses.includes(trangThai)) {
@@ -483,7 +480,7 @@ export const sendPaymentRequest = async (req, res) => {
     }
 
     // Check nếu phiếu cọc không ở trạng thái "Chờ duyệt"
-    if (deposit.trangThai !== 'ChoThanhToan') {
+    if (deposit.trangThai !== 'ChoDuyet') {
       return res.status(400).json({
         success: false,
         message: 'Chỉ có thể gửi yêu cầu thanh toán cho phiếu cọc chờ duyệt',
@@ -527,6 +524,168 @@ export const sendPaymentRequest = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/available-beds?type=giường&roomId=P101
+ * Lấy danh sách giường/phòng còn trống (không bị khóa bởi phiếu cọc)
+ * 
+ * type: 'giường' | 'phòng'
+ * roomId: optional - mã phòng để lấy giường trong phòng đó
+ */
+export const getAvailableBeds = async (req, res) => {
+  try {
+    const { type = 'giường', roomId } = req.query;
+
+    if (!roomId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu tham số: roomId',
+      });
+    }
+
+    if (type !== 'giường' && type !== 'phòng') {
+      return res.status(400).json({
+        success: false,
+        message: 'Type không hợp lệ: chỉ "giường" hoặc "phòng"',
+      });
+    }
+
+    // Get room info
+    const room = await prisma.phong.findUnique({
+      where: { maPhong: roomId },
+      include: {
+        giuong: true,
+      },
+    });
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Phòng không tồn tại',
+      });
+    }
+
+    if (type === 'giường') {
+      // Lấy danh sách giường trống (trangThai = 'Trong')
+      const availableBeds = room.giuong.filter(b => b.trangThai === 'Trong');
+
+      return res.json({
+        success: true,
+        type: 'giường',
+        roomId,
+        roomName: room.tenPhong,
+        roomPrice: room.giaThue,
+        availableBeds: availableBeds.map(b => ({
+          bedId: b.maGiuong,
+          bedName: b.tenGiuong,
+          status: b.trangThai,
+        })),
+        totalAvailable: availableBeds.length,
+        totalInRoom: room.giuong.length,
+      });
+    } else {
+      // Check nếu tất cả giường trong phòng đều trống
+      const allEmpty = room.giuong.every(b => b.trangThai === 'Trong');
+
+      return res.json({
+        success: true,
+        type: 'phòng',
+        roomId,
+        roomName: room.tenPhong,
+        roomPrice: room.giaThue,
+        isAvailable: allEmpty,
+        bedsInRoom: room.giuong.map(b => ({
+          bedId: b.maGiuong,
+          bedName: b.tenGiuong,
+          status: b.trangThai,
+        })),
+        totalBeds: room.giuongs.length,
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error in getAvailableBeds:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi lấy danh sách giường',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * GET /api/deposits/available-rooms?type=giường
+ * Lấy danh sách phòng còn sẵn (có giường trống hoặc toàn bộ phòng trống)
+ * 
+ * type: 'giường' = phòng có ít nhất 1 giường trống
+ * type: 'phòng' = phòng có tất cả giường trống
+ */
+export const getAvailableRooms = async (req, res) => {
+  try {
+    const { type = 'giường' } = req.query;
+
+    if (type !== 'giường' && type !== 'phòng') {
+      return res.status(400).json({
+        success: false,
+        message: 'Type không hợp lệ: chỉ "giường" hoặc "phòng"',
+      });
+    }
+
+    // Get all rooms with their beds
+    const rooms = await prisma.phong.findMany({
+      include: {
+        giuong: true,
+      },
+    });
+
+    let availableRooms = [];
+
+    for (const room of rooms) {
+      if (type === 'giường') {
+        // Phòng có ít nhất 1 giường trống
+        const hasAvailableBeds = room.giuong.some(b => b.trangThai === 'Trong');
+        if (hasAvailableBeds) {
+          availableRooms.push({
+            roomId: room.maPhong,
+            roomName: room.tenPhong,
+            roomPrice: room.giaThue,
+            capacity: room.sucChua,
+            availableBeds: room.giuong.filter(b => b.trangThai === 'Trong').length,
+            totalBeds: room.giuong.length,
+          });
+        }
+      } else {
+        // Phòng có tất cả giường trống
+        const allEmpty = room.giuong.every(b => b.trangThai === 'Trong');
+        if (allEmpty && room.giuong.length > 0) {
+          availableRooms.push({
+            roomId: room.maPhong,
+            roomName: room.tenPhong,
+            roomPrice: room.giaThue,
+            capacity: room.sucChua,
+            totalBeds: room.giuong.length,
+          });
+        }
+      }
+    }
+
+    // Sort by roomId
+    availableRooms.sort((a, b) => a.roomId.localeCompare(b.roomId));
+
+    res.json({
+      success: true,
+      type,
+      availableRooms,
+      total: availableRooms.length,
+    });
+  } catch (error) {
+    console.error('❌ Error in getAvailableRooms:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi lấy danh sách phòng',
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getDeposits,
   getDepositDetail,
@@ -535,4 +694,6 @@ export default {
   deleteDeposit,
   sendPaymentRequest,
   approvePayment,
+  getAvailableBeds,
+  getAvailableRooms,
 };

@@ -136,8 +136,8 @@ const statements = [
    RETURNS void AS $$
    BEGIN
      UPDATE "PhieuCoc"
-     SET "trangThai" = 'TuDongHuy'
-     WHERE "trangThai" = 'ChoThanhToan'
+     SET "trangThai" = 'DaHuy'
+     WHERE "trangThai" = 'ChoDuyet'
        AND "hanThanhToan" < NOW();
    END;
    $$ LANGUAGE plpgsql`,
