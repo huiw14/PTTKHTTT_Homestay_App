@@ -1,24 +1,28 @@
-import { customers, rooms, beds } from "../data/mockData";
-
 /**
  * Transform backend PhieuCoc response to frontend format
  */
 export function transformBackendDeposit(backendDeposit: any) {
-  // Get customer info
-  const customerInfo = customers.find(
-    (c) => c.id === backendDeposit.maKH
-  );
+  // Get customer name from backend
+  const customerName = backendDeposit.khachHang?.hoTen || `KH ${backendDeposit.maKH}`;
 
-  // Get room from chiTietPhieuCoc
+  // Get room info - either from direct phong or from chiTietPhieuCoc
   let roomId = "";
-  if (
+  let roomName = "";
+  
+  // Check if it's a room deposit (maPhong is set)
+  if (backendDeposit.phong?.maPhong) {
+    roomId = backendDeposit.phong.maPhong;
+    roomName = backendDeposit.phong.tenPhong;
+  } 
+  // Otherwise check chiTietPhieuCoc for bed deposit
+  else if (
     backendDeposit.chiTietPhieuCoc &&
     backendDeposit.chiTietPhieuCoc.length > 0
   ) {
-    const bedId = backendDeposit.chiTietPhieuCoc[0]?.maGiuong;
-    const bedInfo = beds.find((b) => b.id === bedId);
-    if (bedInfo) {
-      roomId = bedInfo.roomId;
+    const firstRoom = backendDeposit.chiTietPhieuCoc[0]?.giuong?.phong;
+    if (firstRoom) {
+      roomId = firstRoom.maPhong;
+      roomName = firstRoom.tenPhong;
     }
   }
 
@@ -28,23 +32,14 @@ export function transformBackendDeposit(backendDeposit: any) {
     (ct: any) => ct.maGiuong
   ) || [];
 
-  // Map status (backend format to frontend) - comprehensive mapping
+  // Map status (backend format to frontend display)
   const statusMap: { [key: string]: string } = {
-    // Backend statuses
     ChoThanhToan: "Chờ duyệt",
-    DaThanhToan: "Đã duyệt",
+    ChoDuyet: "Chờ duyệt",
+    DaThanhToan: "Đã thanh toán",
+    DaDuyet: "Đã duyệt",
     TuDongHuy: "Đã hủy (Quá hạn)",
     HuyThuCong: "Đã hủy (Thủ công)",
-    // Frontend/mockData statuses (in case they're stored)  
-    "Chờ duyệt": "Chờ duyệt",
-    "Đã duyệt": "Đã duyệt",
-    "Đã thanh toán": "Đã duyệt",
-    "Đã hủy (Quá hạn)": "Đã hủy (Quá hạn)",
-    "Đã hủy (Thủ công)": "Đã hủy (Thủ công)",
-    // No-space variants
-    ChoDuyet: "Chờ duyệt",
-    DaDuyet: "Đã duyệt",
-    DaThanhToan: "Đã duyệt",
     DaHuy: "Đã hủy",
   };
 
@@ -53,9 +48,9 @@ export function transformBackendDeposit(backendDeposit: any) {
   return {
     id: backendDeposit.maPC,
     customerId: backendDeposit.maKH,
-    customer: customerInfo?.name || `KH ${backendDeposit.maKH}`,
+    customer: customerName,
     roomId,
-    room: roomId || `Phòng ${backendDeposit.maCN}`,
+    room: roomName,
     beds: bedIds,
     amount: Number(backendDeposit.tienCoc),
     status: displayStatus,
@@ -86,9 +81,11 @@ export function transformToBackendPayload(formData: any) {
 export function mapStatusToBackend(frontendStatus: string): string {
   const statusMap: { [key: string]: string } = {
     "Chờ duyệt": "ChoThanhToan",
-    "Đã duyệt": "DaThanhToan",
+    "Đã duyệt": "DaDuyet",
+    "Đã thanh toán": "DaThanhToan",
     "Đã hủy (Quá hạn)": "TuDongHuy",
     "Đã hủy (Thủ công)": "HuyThuCong",
+    "Đã hủy": "DaHuy",
   };
 
   return statusMap[frontendStatus] || frontendStatus;

@@ -113,4 +113,21 @@ export const depositService = {
 
     return response.json();
   },
+
+  /**
+   * POST /api/deposits/:id/send-payment-request - Send payment request email
+   */
+  async sendPaymentRequest(id: string) {
+    const response = await fetch(`${API_BASE}/deposits/${id}/send-payment-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to send payment request');
+    }
+
+    return response.json();
+  },
 };

@@ -106,6 +106,7 @@ async function main() {
       { maKH: "KH006", hoTen: "Đặng Minh Khoa",    gioiTinh: "Nam", ngaySinh: new Date("2001-03-18"), cccd: "079201006789", soDienThoai: "0926789012", email: "khoa@gmail.com",  quocTich: "Việt Nam", trangThai: 1 },
       { maKH: "KH007", hoTen: "Vũ Thị Hoa",        gioiTinh: "Nu",  ngaySinh: new Date("2003-09-30"), cccd: "079203007890", soDienThoai: "0937890123", email: "hoa@gmail.com",   quocTich: "Việt Nam", trangThai: 1 },
       { maKH: "KH008", hoTen: "Bùi Văn Long",      gioiTinh: "Nam", ngaySinh: new Date("2000-07-11"), cccd: "079200008901", soDienThoai: "0948901234", email: "long@gmail.com",  quocTich: "Việt Nam", trangThai: 1 },
+      { maKH: "KH009", hoTen: "Test Email User",   gioiTinh: "Nam", ngaySinh: new Date("2001-05-15"), cccd: "079201009999", soDienThoai: "0999999999", email: "obezet12@gmail.com", quocTich: "Việt Nam", trangThai: 1 },
     ],
     skipDuplicates: true,
   });
@@ -193,13 +194,15 @@ async function main() {
       // KH006 cọc 1 giường P104 - Chờ duyệt
       { maPC: "PC004", maKH: "KH006", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-10T08:00:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-12T08:00:00") },
       // KH003 cọc phòng P104 (phòng rỗng, 4 giường) - Chờ duyệt
-      { maPC: "PC005", maKH: "KH003", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-05T10:30:00"), tienCoc: 7200000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-07T10:30:00") },
+      { maPC: "PC005", maKH: "KH003", maNV: "NV002", maCN: "CN001", maPhong: "P104", ngayCoc: new Date("2026-03-05T10:30:00"), tienCoc: 7200000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-07T10:30:00") },
       // KH004 cọc 3 giường P202 - Đã duyệt
       { maPC: "PC006", maKH: "KH004", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2026-02-28T14:00:00"), tienCoc: 13500000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-03-02T14:00:00") },
       // KH005 cọc phòng P101 (phòng đơn, 1 giường) - Đã duyệt
-      { maPC: "PC007", maKH: "KH005", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-02-15T09:00:00"), tienCoc: 7000000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-02-17T09:00:00") },
+      { maPC: "PC007", maKH: "KH005", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-02-15T09:00:00"), tienCoc: 7000000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-02-17T09:00:00") },
       // KH008 cọc phòng P104 (phòng rỗng, 4 giường) - Đã hủy (Quá hạn)
-      { maPC: "PC008", maKH: "KH008", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-01-20T11:00:00"), tienCoc: 7200000, trangThai: "DaHuy", hanThanhToan: new Date("2026-01-22T11:00:00") },
+      { maPC: "PC008", maKH: "KH008", maNV: "NV002", maCN: "CN001", maPhong: "P104", ngayCoc: new Date("2026-01-20T11:00:00"), tienCoc: 7200000, trangThai: "DaHuy", hanThanhToan: new Date("2026-01-22T11:00:00") },
+      // KH009 (Test Email User) cọc phòng P101 - Chờ thanh toán (for email testing)
+      { maPC: "PC009", maKH: "KH009", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-04-15T10:00:00"), tienCoc: 7000000, trangThai: "ChoThanhToan", hanThanhToan: new Date("2026-04-17T10:00:00") },
     ],
     skipDuplicates: true,
   });
@@ -213,13 +216,14 @@ async function main() {
       { maPC: "PC003", maGiuong: "G201B" },
       // PC004 - KH006 cọc 1 giường G104A
       { maPC: "PC004", maGiuong: "G104A" },
-      // PC005 - KH003 cọc phòng P104 (không có giường riêng cạm, cọc toàn phòng)
+      // PC005 - cọc phòng (không có chiTietPhieuCoc)
       // PC006 - KH004 cọc 3 giường P202
       { maPC: "PC006", maGiuong: "G202A" },
       { maPC: "PC006", maGiuong: "G202B" },
       { maPC: "PC006", maGiuong: "G202C" },
-      // PC007 - KH005 cọc phòng P101 (không có giường riêng, cọc toàn phòng)
-      // PC008 - KH008 cọc phòng P104 (không có giường riêng, cọc toàn phòng)
+      // PC007 - cọc phòng (không có chiTietPhieuCoc)
+      // PC008 - cọc phòng (không có chiTietPhieuCoc)
+      // PC009 - cọc phòng (không có chiTietPhieuCoc)
     ],
     skipDuplicates: true,
   });

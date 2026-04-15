@@ -103,6 +103,7 @@ model Phong {
   chiNhanh  ChiNhanh  @relation(fields: [maCN], references: [maCN])
   loaiPhong LoaiPhong @relation(fields: [maLoai], references: [maLoai])
   giuong    Giuong[]
+  phieuCoc  PhieuCoc[]
 
   @@map("Phong")
 }
@@ -165,6 +166,7 @@ model PhieuCoc {
   maKH          String   @db.VarChar(10)
   maNV          String   @db.VarChar(10)
   maCN          String   @db.VarChar(10)
+  maPhong       String?  @db.VarChar(10)  // For room deposits (nullable)
   ngayCoc       DateTime @db.Timestamp()
   tienCoc       Decimal  @db.Decimal(12, 0)
   trangThai     String   @db.VarChar(20)   // "ChoThanhToan" | "DaThanhToan" | "TuDongHuy" | "HuyThuCong"
@@ -173,6 +175,7 @@ model PhieuCoc {
   khachHang        KhachHang         @relation(fields: [maKH], references: [maKH])
   nhanVien         NhanVien          @relation(fields: [maNV], references: [maNV])
   chiNhanh         ChiNhanh          @relation(fields: [maCN], references: [maCN])
+  phong            Phong?            @relation(fields: [maPhong], references: [maPhong])
   chiTietPhieuCoc  ChiTietPhieuCoc[]
   hopDong          HopDong[]
 

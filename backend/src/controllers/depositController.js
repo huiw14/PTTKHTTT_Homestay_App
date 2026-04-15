@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { sendDepositPaymentRequest, sendPaymentConfirmationEmail } from '../services/emailService.js';
 
 const prisma = new PrismaClient();
 
@@ -41,7 +42,7 @@ export const getDeposits = async (req, res) => {
       const searchLower = search.toLowerCase().trim();
       where.OR = [
         { maPC: { contains: searchLower, mode: 'insensitive' } },
-        { khachHang: { tenKH: { contains: searchLower, mode: 'insensitive' } } },
+        { khachHang: { hoTen: { contains: searchLower, mode: 'insensitive' } } },
         { chiTietPhieuCoc: { some: { giuong: { phong: { tenPhong: { contains: searchLower, mode: 'insensitive' } } } } } },
       ];
     }
@@ -73,6 +74,7 @@ export const getDeposits = async (req, res) => {
         khachHang: true,
         nhanVien: true,
         chiNhanh: true,
+        phong: true,
         chiTietPhieuCoc: {
           include: { giuong: { include: { phong: true } } },
         },
@@ -95,10 +97,12 @@ export const getDeposits = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('❌ Error in getDeposits:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi lấy danh sách phiếu cọc',
       error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 };
@@ -355,10 +359,100 @@ export const deleteDeposit = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/deposits/:id/send-payment-request - Gửi yêu cầu thanh toán qua email
+ */
+export const sendPaymentRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify phiếu cọc tồn tại
+    const deposit = await prisma.phieuCoc.findUnique({
+      where: { maPC: id },
+      include: {
+        khachHang: true,
+        chiTietPhieuCoc: {
+          include: {
+            giuong: {
+              include: { phong: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!deposit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Phiếu cọc không tồn tại',
+      });
+    }
+
+    // Check email tồn tại và hợp lệ
+    if (!deposit.khachHang?.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Khách hàng không có địa chỉ email. Vui lòng cập nhật email trước khi gửi yêu cầu.',
+      });
+    }
+
+    if (!deposit.khachHang.email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        message: `Email không hợp lệ: ${deposit.khachHang.email}. Vui lòng cập nhật email hợp lệ.`,
+      });
+    }
+
+    // Check nếu phiếu cọc không ở trạng thái "Chờ duyệt"
+    if (deposit.trangThai !== 'ChoThanhToan') {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể gửi yêu cầu thanh toán cho phiếu cọc chờ duyệt',
+      });
+    }
+
+    // Get phòng thông tin
+    const room = deposit.chiTietPhieuCoc?.[0]?.giuong?.phong;
+
+    // Send email
+    const emailResult = await sendDepositPaymentRequest(
+      deposit.khachHang.email,
+      deposit.khachHang.hoTen,
+      deposit,
+      room
+    );
+
+    if (!emailResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi gửi email thanh toán',
+        error: emailResult.error,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Yêu cầu thanh toán đã được gửi cho khách hàng',
+      data: {
+        maPC: deposit.maPC,
+        customerEmail: deposit.khachHang.email,
+        messageId: emailResult.messageId,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi gửi yêu cầu thanh toán',
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getDeposits,
   getDepositDetail,
   createDeposit,
   updateDeposit,
   deleteDeposit,
+  sendPaymentRequest,
 };

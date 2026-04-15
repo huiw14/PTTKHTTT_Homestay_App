@@ -12,6 +12,9 @@ router.get('/:id', depositController.getDepositDetail);
 // Create deposit mới
 router.post('/', depositController.createDeposit);
 
+// Send payment request email
+router.post('/:id/send-payment-request', depositController.sendPaymentRequest);
+
 // Update status deposit
 router.put('/:id', depositController.updateDeposit);
 

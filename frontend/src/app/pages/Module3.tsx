@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui";
 import { deposits as mockDeposits, customers, rooms, beds } from "../data/mockData";
 import { Plus, Edit2, CheckCircle, XCircle, Send, Calculator, AlertTriangle, ArrowRight, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { useDepositStore } from "../hooks/useDepositStore";
 import { transformBackendDeposit, transformToBackendPayload, mapStatusToBackend } from "../utils/depositTransform";
 import { depositService } from "../services/depositService";
@@ -316,6 +317,7 @@ export function DepositManage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc" | "status">("date-desc");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalDeposits, setTotalDeposits] = useState(0);
@@ -326,15 +328,15 @@ export function DepositManage() {
     loadDeposits();
   }, []);
 
-  // Reload deposits when search or sort changes (reset to page 1)
+  // Reset page when sort or status changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy]);
+  }, [sortBy, statusFilter]);
 
-  // Load deposits when page, search, or sort changes
+  // Load deposits when currentPage, sortBy, or statusFilter changes
   useEffect(() => {
     loadDeposits();
-  }, [currentPage, searchTerm, sortBy]);
+  }, [currentPage, sortBy, statusFilter]);
 
   const loadDeposits = async () => {
     try {
@@ -345,11 +347,12 @@ export function DepositManage() {
       const backendDeposits: any[] = [];
       const sessionAndMockDeposits = [...sessionDeposits, ...(mockDeposits || [])];
       
-      // Fetch from backend API with search, sort, and pagination
+      // Fetch from backend API with search, sort, status filter, and pagination
       try {
         const response = await depositService.getDeposits({
           search: searchTerm,
           sortBy: sortBy,
+          status: statusFilter,
           page: currentPage,
           limit: LIMIT,
         });
@@ -385,8 +388,10 @@ export function DepositManage() {
               const statusOrder: { [key: string]: number } = {
                 "Chờ duyệt": 1,
                 "Đã duyệt": 2,
+                "Đã thanh toán": 2,
                 "Đã hủy (Quá hạn)": 3,
                 "Đã hủy (Thủ công)": 3,
+                "Đã hủy": 3,
               };
               return (statusOrder[a.status] ?? 999) - (statusOrder[b.status] ?? 999);
             }
@@ -442,6 +447,29 @@ export function DepositManage() {
     }
   };
 
+  const handleSendPaymentRequest = async (depositId: string) => {
+    try {
+      setUpdating(depositId);
+      setError(null);
+
+      const response = await depositService.sendPaymentRequest(depositId);
+
+      if (response.success) {
+        // Show success message
+        toast.success(`Yêu cầu thanh toán đã được gửi cho khách hàng (${response.data.customerEmail})`);
+      } else {
+        throw new Error(response.message || "Failed to send payment request");
+      }
+    } catch (err: any) {
+      const message = err.message || "Error sending payment request";
+      setError(message);
+      toast.error(message);
+      console.error("Send payment request error:", err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const depositType = selectedDeposit 
     ? Array.isArray(selectedDeposit?.beds) && selectedDeposit?.beds?.length > 0 ? "giường" : "phòng" 
     : null;
@@ -487,6 +515,13 @@ export function DepositManage() {
                 placeholder="Tìm kiếm theo mã phiếu, khách hàng hoặc phòng..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setCurrentPage(1);
+                    loadDeposits();
+                  }
+                }}
                 className="w-full"
               />
             </div>
@@ -501,6 +536,18 @@ export function DepositManage() {
                 <option value="amount-desc">Tiền cao nhất</option>
                 <option value="amount-asc">Tiền thấp nhất</option>
                 <option value="status">Trạng thái</option>
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="ChoThanhToan">Chờ duyệt</option>
+                <option value="DaThanhToan">Đã thanh toán</option>
+                <option value="ChoDuyet">Chờ duyệt</option>
+                <option value="DaDuyet">Đã duyệt</option>
+                <option value="DaHuy">Đã hủy</option>
               </select>
               {searchTerm && (
                 <Button
@@ -612,8 +659,11 @@ export function DepositManage() {
                             <span className={`px-2 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1
                               ${d.status === 'Đã duyệt' ? 'bg-green-100 text-green-700' : 
                                 d.status === 'Chờ duyệt' ? 'bg-orange-100 text-orange-700' : 
+                                d.status === 'Đã thanh toán' ? 'bg-green-100 text-green-700' :
                                 'bg-red-100 text-red-700'}`}>
-                              {d.status === 'Đã duyệt' && <CheckCircle className="w-3 h-3"/>}
+                              {d.status === 'Đã thanh toán' && <CheckCircle className="w-3 h-3"/>}
+                            {d.status === 'Đã duyệt' && <CheckCircle className="w-3 h-3"/>}
+                              {d.status === 'Đã thanh toán' && <CheckCircle className="w-3 h-3"/>}
                               {d.status === 'Chờ duyệt' && <AlertTriangle className="w-3 h-3"/>}
                               {d.status.includes('hủy') && <XCircle className="w-3 h-3"/>}
                               {d.status}
@@ -628,8 +678,14 @@ export function DepositManage() {
                                   className="text-xs bg-white text-blue-600 border-blue-200 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" 
                                   title="Gửi Yêu cầu Thanh toán"
                                   disabled={updating === d.id}
+                                  onClick={() => handleSendPaymentRequest(d.id)}
                                 >
-                                  <Send className="w-3 h-3 mr-1" /> Gửi KH
+                                  {updating === d.id ? (
+                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                  ) : (
+                                    <Send className="w-3 h-3 mr-1" />
+                                  )}
+                                  Gửi KH
                                 </Button>
                                 <Button 
                                   size="sm" 
