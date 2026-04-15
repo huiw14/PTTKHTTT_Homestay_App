@@ -99,3 +99,17 @@ export const MOCK_CHECKOUT_SCHEDULES = [
 export const MOCK_CHECKOUT_SLIPS = [
   { id: "PC01", contractId: "HD01", depositRefund: 2400000, deduction: 200000, totalPayout: 2200000, status: "Chờ đối soát" },
 ];
+
+export const users = MOCK_USERS;
+export const branches = MOCK_BRANCHES;
+export const rooms = MOCK_ROOMS;
+export const services = MOCK_SERVICES;
+export const customers = MOCK_CUSTOMERS;
+export const requests = MOCK_REQUESTS;
+export const appointments = MOCK_APPOINTMENTS;
+export const deposits = MOCK_DEPOSITS;
+export const contracts = MOCK_CONTRACTS;
+export const members = MOCK_MEMBERS;
+export const receipts = MOCK_RECEIPTS;
+export const checkoutSchedules = MOCK_CHECKOUT_SCHEDULES;
+export const checkoutSlips = MOCK_CHECKOUT_SLIPS;
