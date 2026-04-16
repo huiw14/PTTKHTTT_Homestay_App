@@ -5,6 +5,7 @@ import {
   Users, 
   CreditCard, 
   FileText, 
+  Plus,
   LogOut,
   Bell,
   UserCircle
@@ -40,6 +41,7 @@ const MENU_GROUPS = [
     title: "Hợp đồng & Trả phòng (Module 4 & 5)",
     items: [
       { name: "Quản lý Hợp đồng", path: "/contracts/manage", icon: FileText },
+      { name: "Lập Hợp đồng mới", path: "/contracts/create", icon: Plus },
       { name: "Thu tiền kỳ đầu", path: "/contracts/receipts", icon: CreditCard },
       { name: "Lịch trả phòng", path: "/checkout/schedules", icon: LogOut },
       { name: "Thanh lý & Đối soát", path: "/checkout/slips", icon: LogOut },

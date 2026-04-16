@@ -165,6 +165,7 @@ model PhieuCoc {
   maKH          String   @db.VarChar(10)
   maNV          String   @db.VarChar(10)
   maCN          String   @db.VarChar(10)
+  maPhong       String?  @db.VarChar(10)   // legacy column, kept to avoid data loss during migration
   ngayCoc       DateTime @db.Timestamp()
   tienCoc       Decimal  @db.Decimal(12, 0)
   trangThai     String   @db.VarChar(20)   // "ChoThanhToan" | "DaThanhToan" | "TuDongHuy" | "HuyThuCong"
@@ -201,6 +202,7 @@ model HopDong {
   ngayKetThuc  DateTime @db.Date
   kyThanhToan  Int                          // số tháng/kỳ
   trangThai    String   @db.VarChar(20)     // "DangHieuLuc" | "HetHan" | "DaThanhLy"
+  anhHD        String?  @db.Text    
 
   phieuCoc         PhieuCoc         @relation(fields: [maPC], references: [maPC])
   nhanVien         NhanVien         @relation(fields: [maNV], references: [maNV])
@@ -361,4 +363,16 @@ model ThanhLyHD {
   nhanVien        NhanVien        @relation(fields: [maNV], references: [maNV])
 
   @@map("ThanhLyHD")
+}
+
+// ─── CHÍNH SÁCH ─────────────────────────────────────────────────────────────
+
+model ChinhSach {
+  maCS        String   @id @db.VarChar(10)
+  tieuDe      String   @db.VarChar(150)
+  noiDung     String   @db.Text
+  trangThai   Int      @default(1)
+  ngayCapNhat DateTime @updatedAt @db.Timestamp()
+
+  @@map("ChinhSach")
 }
