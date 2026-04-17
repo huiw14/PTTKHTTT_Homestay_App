@@ -646,6 +646,7 @@ export const sendPaymentRequest = async (req, res) => {
       where: { maPC: id },
       include: {
         khachHang: true,
+        phong: true,
         chiTietPhieuCoc: {
           include: {
             giuong: {
@@ -686,8 +687,8 @@ export const sendPaymentRequest = async (req, res) => {
       });
     }
 
-    // Get phòng thông tin
-    const room = deposit.chiTietPhieuCoc?.[0]?.giuong?.phong;
+    // Get phòng
+    const room = deposit.phong || deposit.chiTietPhieuCoc?.[0]?.giuong?.phong;
 
     // Send email
     const emailResult = await sendDepositPaymentRequest(
