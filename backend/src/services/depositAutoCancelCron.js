@@ -49,7 +49,38 @@ export async function startDepositAutoCancelCron() {
       for (const deposit of expiredDeposits) {
         try {
           // Get all bed IDs associated with this deposit
-          const bedIds = deposit.chiTietPhieuCoc.map((ct) => ct.maGiuong);
+          let bedIds = deposit.chiTietPhieuCoc.map((ct) => ct.maGiuong);
+          
+          // If room deposit but no chiTietPhieuCoc (phòng được tạo mà không có chi tiết), fetch giường từ phòng
+          if (deposit.maPhong && bedIds.length === 0) {
+            console.log(`   🔄 Room deposit but no chiTietPhieuCoc - fetching beds from room ${deposit.maPhong}`);
+            const room = await prisma.phong.findUnique({
+              where: { maPhong: deposit.maPhong },
+              include: { giuong: true },
+            });
+            if (room) {
+              bedIds = room.giuong.map(g => g.maGiuong);
+              console.log(`   Beds from room: ${bedIds.join(', ')}`);
+            }
+          }
+
+          // VALIDATION: Kiểm tra tất cả giường/phòng có trạng thái khác bằng DaCoc không
+          if (bedIds.length > 0) {
+            // Fetch giường từ DB để check trạng thái hiện tại
+            const currentBeds = await prisma.giuong.findMany({
+              where: { maGiuong: { in: bedIds } },
+            });
+            console.log(`   Current bed statuses:`, currentBeds.map(b => `${b.maGiuong}:${b.trangThai}`).join(', '));
+            
+            const bedsNotInDaCoc = currentBeds.filter(b => b.trangThai !== 'DaCoc');
+            
+            if (bedsNotInDaCoc.length > 0) {
+              // Skip this deposit - beds have been transitioned to another status
+              const bedsInfo = bedsNotInDaCoc.map(b => `${b.maGiuong}(${b.trangThai})`).join(', ');
+              console.log(`   ⏭️  ${deposit.maPC} skipped - beds not in DaCoc status: ${bedsInfo}`);
+              continue;
+            }
+          }
 
           // Update deposit status to DaHuy (auto-cancelled)
           await prisma.phieuCoc.update({
@@ -61,14 +92,49 @@ export async function startDepositAutoCancelCron() {
 
           // Release beds back to available status
           if (bedIds.length > 0) {
-            await prisma.giuong.updateMany({
-              where: { maGiuong: { in: bedIds } },
+            const updateResult = await prisma.giuong.updateMany({
+              where: { 
+                maGiuong: { in: bedIds },
+                trangThai: 'DaCoc', // Only release beds that are still in DaCoc state
+              },
               data: { trangThai: 'Trong' }, // Available again
             });
+            console.log(`   ✅ Released ${updateResult.count} beds to "Trong"`);
 
-            console.log(`   ✅ ${deposit.maPC} cancelled (${bedIds.length} beds: ${bedIds.join(', ')} released)`);
-          } else {
-            console.log(`   ✅ ${deposit.maPC} cancelled (room deposit)`);
+            // Also reset room status if all beds in room are now Trong
+            // Get unique room IDs from the beds
+            let roomIds = [...new Set(deposit.chiTietPhieuCoc.map(ct => ct.giuong?.maPhong).filter(Boolean))];
+            if (deposit.maPhong && !roomIds.includes(deposit.maPhong)) {
+              roomIds.push(deposit.maPhong);
+            }
+            
+            for (const roomId of roomIds) {
+              // Fetch lại trạng thái mới của các giường sau khi release
+              const updatedRoomBeds = await prisma.giuong.findMany({ where: { maPhong: roomId } });
+              const allEmpty = updatedRoomBeds.every(b => b.trangThai === 'Trong');
+              if (allEmpty) {
+                await prisma.phong.update({
+                  where: { maPhong: roomId },
+                  data: { trangThai: 'Trong' },
+                });
+              }
+            }
+
+            console.log(`   ✅ ${deposit.maPC} auto-cancelled (${bedIds.length} beds released)`);
+          }
+
+          // Release room for room deposits (maPhong set directly on phieuCoc) when no chiTietPhieuCoc
+          if (deposit.maPhong && bedIds.length === 0) {
+            // Fetch lại trạng thái mới của các giường sau khi release
+            const updatedRoomBeds = await prisma.giuong.findMany({ where: { maPhong: deposit.maPhong } });
+            const allEmpty = updatedRoomBeds.every(b => b.trangThai === 'Trong');
+            if (allEmpty) {
+              await prisma.phong.update({
+                where: { maPhong: deposit.maPhong },
+                data: { trangThai: 'Trong' },
+              });
+            }
+            console.log(`   ✅ ${deposit.maPC} auto-cancelled (room deposit: ${deposit.maPhong} released)`);
           }
         } catch (err) {
           console.error(`   ❌ Error processing ${deposit.maPC}: ${err.message}`);

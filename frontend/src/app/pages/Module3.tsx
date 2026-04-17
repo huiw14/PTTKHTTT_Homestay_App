@@ -171,13 +171,18 @@ export function DepositCreate() {
       const totalDeposit = (Number(roomInfo?.roomPrice) || 0) * 2 * bedCount;
 
       // Call API
-      const payload = {
+      const payload: any = {
         maKH: selectedCustomer,
         maNV: "NV001", // Current user (mock)
         maCN: "CN001", // Current branch (mock)
         tienCoc: totalDeposit,
-        beds: selectedBedIds, // API will handle bed updates
+        beds: depositType === "giường" ? selectedBedIds : [], // Only for bed deposits
       };
+
+      // For room deposits, send maPhong so backend can lock all beds in the room
+      if (depositType === "phòng" && selectedRoom) {
+        payload.maPhong = selectedRoom;
+      }
 
       const response = await depositService.createDeposit(payload);
 
@@ -572,12 +577,10 @@ export function DepositManage() {
   };
 
   const depositType = selectedDeposit 
-    ? Array.isArray(selectedDeposit?.beds) && selectedDeposit?.beds?.length > 0 ? "giường" : "phòng" 
+    ? (selectedDeposit?.type || (selectedDeposit?.roomId && !selectedDeposit?.beds?.length ? "phòng" : "giường"))
     : null;
   
-  const bedsDetail = selectedDeposit && Array.isArray(selectedDeposit?.beds) 
-    ? beds.filter(b => selectedDeposit?.beds?.includes(b.id))
-    : [];
+  const bedsDetail = selectedDeposit?.bedsDetail || [];
   
   return (
     <div className="space-y-6">
@@ -862,7 +865,7 @@ export function DepositManage() {
                     </TableRow>
                   ) : (
                     allDeposits.map((d) => {
-                      const depType = Array.isArray(d.beds) && d.beds.length > 0 ? "giường" : "phòng";
+                      const depType = d.type || "giường";
                       return (
                         <TableRow key={d.id}>
                           <TableCell className="font-medium text-blue-600">{d.id}</TableCell>
@@ -875,11 +878,8 @@ export function DepositManage() {
                             <span className={`px-2 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1
                               ${d.status === 'Đã duyệt' ? 'bg-green-100 text-green-700' : 
                                 d.status === 'Chờ duyệt' ? 'bg-orange-100 text-orange-700' : 
-                                d.status === 'Đã thanh toán' ? 'bg-green-100 text-green-700' :
                                 'bg-red-100 text-red-700'}`}>
-                              {d.status === 'Đã thanh toán' && <CheckCircle className="w-3 h-3"/>}
-                            {d.status === 'Đã duyệt' && <CheckCircle className="w-3 h-3"/>}
-                              {d.status === 'Đã thanh toán' && <CheckCircle className="w-3 h-3"/>}
+                              {d.status === 'Đã duyệt' && <CheckCircle className="w-3 h-3"/>}
                               {d.status === 'Chờ duyệt' && <AlertTriangle className="w-3 h-3"/>}
                               {d.status.includes('hủy') && <XCircle className="w-3 h-3"/>}
                               {d.status}
@@ -991,7 +991,7 @@ export function DepositManage() {
               variant="destructive" 
               onClick={async () => {
                 if (deleteDepositId) {
-                  await handleStatusUpdate(deleteDepositId, "Đã hủy (Thủ công)");
+                  await handleStatusUpdate(deleteDepositId, "Đã hủy");
                   setDeleteConfirmOpen(false);
                   setDeleteDepositId(null);
                 }
@@ -1026,10 +1026,10 @@ export function DepositManage() {
               <h4 className="font-semibold text-sm mb-2">Danh sách giường:</h4>
               <div className="space-y-2">
                 {bedsDetail.length > 0 ? (
-                  bedsDetail.map(bed => (
-                    <div key={bed.id} className="p-2 bg-slate-50 rounded border border-slate-200 text-sm">
-                      <p><strong>{bed.bedName}</strong> (Giường {bed.bedNumber})</p>
-                      <p className="text-xs text-slate-500">Mã: {bed.id}</p>
+                  bedsDetail.map((bed: any) => (
+                    <div key={bed.bedId} className="p-2 bg-slate-50 rounded border border-slate-200 text-sm">
+                      <p><strong>{bed.bedName}</strong></p>
+                      <p className="text-xs text-slate-500">Mã: {bed.bedId}</p>
                     </div>
                   ))
                 ) : (

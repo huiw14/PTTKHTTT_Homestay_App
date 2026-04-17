@@ -44,6 +44,7 @@ export const getDeposits = async (req, res) => {
         { maPC: { contains: searchLower, mode: 'insensitive' } },
         { khachHang: { hoTen: { contains: searchLower, mode: 'insensitive' } } },
         { chiTietPhieuCoc: { some: { giuong: { phong: { tenPhong: { contains: searchLower, mode: 'insensitive' } } } } } },
+        { phong: { tenPhong: { contains: searchLower, mode: 'insensitive' } } },
       ];
     }
 
@@ -120,6 +121,7 @@ export const getDepositDetail = async (req, res) => {
         khachHang: true,
         nhanVien: true,
         chiNhanh: true,
+        phong: true,
         chiTietPhieuCoc: {
           include: { giuong: { include: { phong: true } } },
         },
@@ -155,9 +157,9 @@ export const getDepositDetail = async (req, res) => {
  */
 export const createDeposit = async (req, res) => {
   try {
-    const { maKH, maNV, maCN, tienCoc, beds = [] } = req.body;
+    const { maKH, maNV, maCN, tienCoc, beds = [], maPhong } = req.body;
     
-    console.log('📝 createDeposit request:', { maKH, maNV, maCN, tienCoc, beds });
+    console.log('📝 createDeposit request:', { maKH, maNV, maCN, tienCoc, beds, maPhong });
 
     // Validate input
     if (!maKH || !maNV || !maCN || tienCoc === undefined || tienCoc === null) {
@@ -188,6 +190,36 @@ export const createDeposit = async (req, res) => {
     const ngayCoc = new Date();
     const hanThanhToan = new Date(ngayCoc.getTime() + 24 * 60 * 60 * 1000);
 
+    // Determine beds to lock
+    let bedsToLock = [...beds];
+
+    // If room deposit (maPhong provided), lock ALL beds in the room
+    if (maPhong) {
+      const room = await prisma.phong.findUnique({
+        where: { maPhong },
+        include: { giuong: true },
+      });
+
+      if (!room) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phòng không tồn tại',
+        });
+      }
+
+      // For room deposit, lock all beds in the room
+      bedsToLock = room.giuong.map(g => g.maGiuong);
+
+      // Verify all beds are available
+      const unavailableBeds = room.giuong.filter(g => g.trangThai !== 'Trong');
+      if (unavailableBeds.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Phòng ${maPhong} có ${unavailableBeds.length} giường đã được cọc/thuê, không thể cọc nguyên phòng`,
+        });
+      }
+    }
+
     // Create phiếu cọc
     const deposit = await prisma.phieuCoc.create({
       data: {
@@ -195,6 +227,7 @@ export const createDeposit = async (req, res) => {
         maKH,
         maNV,
         maCN,
+        maPhong: maPhong || null, // Set maPhong for room deposits
         tienCoc: parseInt(tienCoc),
         trangThai: 'ChoDuyet',
         ngayCoc,
@@ -202,14 +235,14 @@ export const createDeposit = async (req, res) => {
       },
     });
 
-    // Thêm chi tiết giường (nếu có)
-    if (beds.length > 0) {
+    // Thêm chi tiết giường (bed-deposit hoặc room-deposit đều có)
+    if (bedsToLock.length > 0) {
       // Verify tất cả giường tồn tại
       const existingBeds = await prisma.giuong.findMany({
-        where: { maGiuong: { in: beds } },
+        where: { maGiuong: { in: bedsToLock } },
       });
 
-      if (existingBeds.length !== beds.length) {
+      if (existingBeds.length !== bedsToLock.length) {
         // Rollback
         await prisma.phieuCoc.delete({ where: { maPC } });
         return res.status(400).json({
@@ -218,9 +251,20 @@ export const createDeposit = async (req, res) => {
         });
       }
 
+      // Verify tất cả giường đang trống (chống race condition)
+      const unavailableBeds = existingBeds.filter(b => b.trangThai !== 'Trong');
+      if (unavailableBeds.length > 0) {
+        // Rollback
+        await prisma.phieuCoc.delete({ where: { maPC } });
+        return res.status(400).json({
+          success: false,
+          message: `Giường ${unavailableBeds.map(b => b.maGiuong).join(', ')} đã được cọc/thuê, không thể cọc`,
+        });
+      }
+
       // Create chi tiết phiếu cọc
       await prisma.chiTietPhieuCoc.createMany({
-        data: beds.map((maGiuong) => ({
+        data: bedsToLock.map((maGiuong) => ({
           maPC,
           maGiuong,
         })),
@@ -228,7 +272,7 @@ export const createDeposit = async (req, res) => {
 
       // Update trạng thái giường → DaCoc
       await prisma.giuong.updateMany({
-        where: { maGiuong: { in: beds } },
+        where: { maGiuong: { in: bedsToLock } },
         data: { trangThai: 'DaCoc' },
       });
     }
@@ -240,8 +284,9 @@ export const createDeposit = async (req, res) => {
         khachHang: true,
         nhanVien: true,
         chiNhanh: true,
+        phong: true,
         chiTietPhieuCoc: {
-          include: { giuong: true },
+          include: { giuong: { include: { phong: true } } },
         },
       },
     });
@@ -342,6 +387,11 @@ export const updateDeposit = async (req, res) => {
     // Verify phiếu cọc tồn tại
     const deposit = await prisma.phieuCoc.findUnique({
       where: { maPC: id },
+      include: {
+        chiTietPhieuCoc: {
+          include: { giuong: true },
+        },
+      },
     });
 
     if (!deposit) {
@@ -365,6 +415,75 @@ export const updateDeposit = async (req, res) => {
       });
     }
 
+    // If cancelling, validate and release beds and room resources
+    if (trangThai === 'DaHuy' && deposit.trangThai !== 'DaHuy') {
+      // VALIDATION: Chỉ được hủy nếu trạng thái là "ChoDuyet" (chờ duyệt)
+      if (deposit.trangThai !== 'ChoDuyet') {
+        return res.status(400).json({
+          success: false,
+          message: `Chỉ có thể hủy phiếu cọc ở trạng thái "Chờ duyệt". Trạng thái hiện tại: ${deposit.trangThai}`,
+        });
+      }
+
+      // VALIDATION: Kiểm tra tất cả giường/phòng có trạng thái khác bằng DaCoc không
+      // (tức là giường phải still trong trạng thái DaCoc để có thể hủy cọc)
+      let bedIds = deposit.chiTietPhieuCoc.map(ct => ct.maGiuong);
+      
+      // If room deposit but no chiTietPhieuCoc (phòng được tạo mà không có chi tiết), fetch giường từ phòng
+      if (deposit.maPhong && bedIds.length === 0) {
+        const room = await prisma.phong.findUnique({
+          where: { maPhong: deposit.maPhong },
+          include: { giuong: true },
+        });
+        if (room) {
+          bedIds = room.giuong.map(g => g.maGiuong);
+        }
+      }
+      
+      if (bedIds.length > 0) {
+        // Kiểm tra xem có giường nào không còn ở trạng thái DaCoc không
+        // Cần fetch giường từ DB để check trạng thái hiện tại
+        const currentBeds = await prisma.giuong.findMany({
+          where: { maGiuong: { in: bedIds } },
+        });
+        
+        const bedsNotInDaCoc = currentBeds.filter(b => b.trangThai !== 'DaCoc');
+        if (bedsNotInDaCoc.length > 0) {
+          const bedsInfo = bedsNotInDaCoc.map(b => `${b.maGiuong} (${b.trangThai})`).join(', ');
+          return res.status(400).json({
+            success: false,
+            message: `Không thể hủy phiếu cọc. Các giường/phòng không còn ở trạng thái cọc (DaCoc): ${bedsInfo}. Phiếu cọc chỉ có thể hủy nếu các giường/phòng của nó vẫn ở trạng thái DaCoc.`,
+          });
+        }
+
+        // Release all beds associated with this deposit
+        const updateResult = await prisma.giuong.updateMany({
+          where: {
+            maGiuong: { in: bedIds },
+            trangThai: 'DaCoc', // Only release beds that are still in DaCoc state
+          },
+          data: { trangThai: 'Trong' },
+        });
+      }
+
+      // Release room if it was a room deposit (maPhong set)
+      if (deposit.maPhong) {
+        // Fetch lại trạng thái mới của các giường sau khi release
+        const updatedRoomBeds = await prisma.giuong.findMany({
+          where: { maPhong: deposit.maPhong },
+        });
+        
+        // Check if all beds in the room are now Trong
+        const allEmpty = updatedRoomBeds.every(b => b.trangThai === 'Trong');
+        if (allEmpty) {
+          await prisma.phong.update({
+            where: { maPhong: deposit.maPhong },
+            data: { trangThai: 'Trong' },
+          });
+        }
+      }
+    }
+
     // Update status
     const updated = await prisma.phieuCoc.update({
       where: { maPC: id },
@@ -373,8 +492,9 @@ export const updateDeposit = async (req, res) => {
         khachHang: true,
         nhanVien: true,
         chiNhanh: true,
+        phong: true,
         chiTietPhieuCoc: {
-          include: { giuong: true },
+          include: { giuong: { include: { phong: true } } },
         },
       },
     });
@@ -395,6 +515,7 @@ export const updateDeposit = async (req, res) => {
 
 /**
  * DELETE /api/deposits/:id - Xóa phiếu cọc
+ * Chỉ được xóa phiếu cọc ở trạng thái "ChoDuyet" và giường/phòng vẫn ở trạng thái "DaCoc"
  */
 export const deleteDeposit = async (req, res) => {
   try {
@@ -403,6 +524,11 @@ export const deleteDeposit = async (req, res) => {
     // Verify phiếu cọc tồn tại
     const deposit = await prisma.phieuCoc.findUnique({
       where: { maPC: id },
+      include: {
+        chiTietPhieuCoc: {
+          include: { giuong: true },
+        },
+      },
     });
 
     if (!deposit) {
@@ -410,6 +536,79 @@ export const deleteDeposit = async (req, res) => {
         success: false,
         message: 'Phiếu cọc không tồn tại',
       });
+    }
+
+    console.log(`🔍 DEBUG deleteDeposit ${id}: deposit found, maPhong=${deposit.maPhong}, chiTietPhieuCoc count=${deposit.chiTietPhieuCoc?.length || 0}`);
+    console.log(`🔍 DEBUG deposit.chiTietPhieuCoc:`, JSON.stringify(deposit.chiTietPhieuCoc, null, 2));
+
+    // VALIDATION: Chỉ được xóa nếu trạng thái là "ChoDuyet"
+    if (deposit.trangThai !== 'ChoDuyet') {
+      return res.status(400).json({
+        success: false,
+        message: `Chỉ có thể xóa phiếu cọc ở trạng thái "Chờ duyệt". Trạng thái hiện tại: ${deposit.trangThai}`,
+      });
+    }
+
+    // VALIDATION: Kiểm tra tất cả giường/phòng có trạng thái khác bằng DaCoc không
+    let bedIds = deposit.chiTietPhieuCoc.map(ct => ct.maGiuong);
+    
+    // If room deposit but no chiTietPhieuCoc (phòng được tạo mà không có chi tiết), fetch giường từ phòng
+    if (deposit.maPhong && bedIds.length === 0) {
+      const room = await prisma.phong.findUnique({
+        where: { maPhong: deposit.maPhong },
+        include: { giuong: true },
+      });
+      if (room) {
+        bedIds = room.giuong.map(g => g.maGiuong);
+      }
+    }
+    
+    if (bedIds.length > 0) {
+      // Cần fetch giường từ DB để check trạng thái hiện tại
+      const currentBeds = await prisma.giuong.findMany({
+        where: { maGiuong: { in: bedIds } },
+      });
+      
+      const bedsNotInDaCoc = currentBeds.filter(b => b.trangThai !== 'DaCoc');
+      if (bedsNotInDaCoc.length > 0) {
+        const bedsInfo = bedsNotInDaCoc.map(b => `${b.maGiuong} (${b.trangThai})`).join(', ');
+        return res.status(400).json({
+          success: false,
+          message: `Không thể xóa phiếu cọc. Các giường/phòng không còn ở trạng thái cọc (DaCoc): ${bedsInfo}. Phiếu cọc chỉ có thể xóa nếu các giường/phòng của nó vẫn ở trạng thái DaCoc.`,
+        });
+      }
+    }
+
+    // Release beds before deleting
+    console.log(`🔍 DEBUG deleteDeposit ${id}: bedIds = ${JSON.stringify(bedIds)}, maPhong = ${deposit.maPhong}`);
+    
+    if (bedIds.length > 0) {
+      const updateResult = await prisma.giuong.updateMany({
+        where: {
+          maGiuong: { in: bedIds },
+          trangThai: 'DaCoc',
+        },
+        data: { trangThai: 'Trong' },
+      });
+      console.log(`✅ Updated ${updateResult.count} beds to "Trong"`);
+    } else {
+      console.log(`⚠️  No beds found to release`);
+    }
+
+    // Release room if it was a room deposit
+    if (deposit.maPhong) {
+      // Fetch lại trạng thái mới của các giường sau khi release
+      const updatedRoomBeds = await prisma.giuong.findMany({
+        where: { maPhong: deposit.maPhong },
+      });
+      // Check if all beds in the room are now Trong
+      const allEmpty = updatedRoomBeds.every(b => b.trangThai === 'Trong');
+      if (allEmpty) {
+        await prisma.phong.update({
+          where: { maPhong: deposit.maPhong },
+          data: { trangThai: 'Trong' },
+        });
+      }
     }
 
     // Delete chi tiết phiếu cọc trước
@@ -598,7 +797,7 @@ export const getAvailableBeds = async (req, res) => {
           bedName: b.tenGiuong,
           status: b.trangThai,
         })),
-        totalBeds: room.giuongs.length,
+        totalBeds: room.giuong.length,
       });
     }
   } catch (error) {
@@ -629,46 +828,62 @@ export const getAvailableRooms = async (req, res) => {
       });
     }
 
-    // Get all rooms with their beds
-    const rooms = await prisma.phong.findMany({
-      include: {
-        giuong: true,
-      },
-    });
-
     let availableRooms = [];
 
-    for (const room of rooms) {
-      if (type === 'giường') {
-        // Phòng có ít nhất 1 giường trống
-        const hasAvailableBeds = room.giuong.some(b => b.trangThai === 'Trong');
-        if (hasAvailableBeds) {
-          availableRooms.push({
-            roomId: room.maPhong,
-            roomName: room.tenPhong,
-            roomPrice: room.giaThue,
-            capacity: room.sucChua,
-            availableBeds: room.giuong.filter(b => b.trangThai === 'Trong').length,
-            totalBeds: room.giuong.length,
-          });
-        }
-      } else {
-        // Phòng có tất cả giường trống
-        const allEmpty = room.giuong.every(b => b.trangThai === 'Trong');
-        if (allEmpty && room.giuong.length > 0) {
-          availableRooms.push({
-            roomId: room.maPhong,
-            roomName: room.tenPhong,
-            roomPrice: room.giaThue,
-            capacity: room.sucChua,
-            totalBeds: room.giuong.length,
-          });
-        }
-      }
-    }
+    if (type === 'giường') {
+      // Fetch rooms with at least 1 available bed
+      const rooms = await prisma.phong.findMany({
+        where: {
+          giuong: {
+            some: { trangThai: 'Trong' }
+          }
+        },
+        include: {
+          giuong: {
+            where: { trangThai: 'Trong' },
+            select: { maGiuong: true }
+          },
+          _count: {
+            select: { giuong: true }
+          }
+        },
+        orderBy: { maPhong: 'asc' }
+      });
 
-    // Sort by roomId
-    availableRooms.sort((a, b) => a.roomId.localeCompare(b.roomId));
+      availableRooms = rooms.map(room => ({
+        roomId: room.maPhong,
+        roomName: room.tenPhong,
+        roomPrice: room.giaThue,
+        capacity: room.sucChua,
+        availableBeds: room.giuong.length,
+        totalBeds: room._count.giuong,
+      }));
+    } else {
+      // Fetch rooms where all beds are available (all beds status = 'Trong')
+      const rooms = await prisma.phong.findMany({
+        where: {
+          giuong: {
+            none: { trangThai: { not: 'Trong' } }
+          }
+        },
+        include: {
+          _count: {
+            select: { giuong: true }
+          }
+        },
+        orderBy: { maPhong: 'asc' }
+      });
+
+      availableRooms = rooms
+        .filter(room => room._count.giuong > 0) // Only rooms with beds
+        .map(room => ({
+          roomId: room.maPhong,
+          roomName: room.tenPhong,
+          roomPrice: room.giaThue,
+          capacity: room.sucChua,
+          totalBeds: room._count.giuong,
+        }));
+    }
 
     res.json({
       success: true,

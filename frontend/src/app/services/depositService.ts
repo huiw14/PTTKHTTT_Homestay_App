@@ -7,6 +7,7 @@ export interface DepositPayload {
   maCN: string;
   tienCoc: number;
   beds?: string[];
+  maPhong?: string;
 }
 
 export interface DepositUpdatePayload {

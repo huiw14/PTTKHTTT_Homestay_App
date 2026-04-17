@@ -105,6 +105,9 @@ model Phong {
   giuong    Giuong[]
   phieuCoc  PhieuCoc[]
 
+  @@index([maCN])
+  @@index([trangThai])
+  @@index([maCN, trangThai])
   @@map("Phong")
 }
 
@@ -119,6 +122,9 @@ model Giuong {
   thanhVien          ThanhVien[]
   chiTietBanGiao     ChiTietBanGiao[]
 
+  @@index([maPhong])
+  @@index([trangThai])
+  @@index([maPhong, trangThai])
   @@map("Giuong")
 }
 
@@ -143,6 +149,9 @@ model YeuCauThue {
   nhanVien  NhanVien  @relation(fields: [maNV], references: [maNV])
   lichHen   LichHen[]
 
+  @@index([trangThai])
+  @@index([maKH])
+  @@index([maNV])
   @@map("YeuCauThue")
 }
 
@@ -179,6 +188,13 @@ model PhieuCoc {
   chiTietPhieuCoc  ChiTietPhieuCoc[]
   hopDong          HopDong[]
 
+  @@index([trangThai])
+  @@index([ngayCoc])
+  @@index([trangThai, ngayCoc])
+  @@index([maPhong])
+  @@index([maKH])
+  @@index([maCN])
+  @@index([maNV])
   @@map("PhieuCoc")
 }
 
@@ -190,6 +206,7 @@ model ChiTietPhieuCoc {
   giuong   Giuong   @relation(fields: [maGiuong], references: [maGiuong])
 
   @@id([maPC, maGiuong])
+  @@index([maGiuong])
   @@map("ChiTietPhieuCoc")
 }
 

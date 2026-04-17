@@ -67,7 +67,7 @@ async function main() {
   await prisma.giuong.createMany({
     data: [
       // P101 - 1 giường đơn
-      { maGiuong: "G101A", maPhong: "P101", tenGiuong: "Giường 101A", trangThai: "Trong"  },
+      { maGiuong: "G101A", maPhong: "P101", tenGiuong: "Giường 101A", trangThai: "DaCoc"  },
       // P102 - 2 giường
       { maGiuong: "G102A", maPhong: "P102", tenGiuong: "Giường 102A", trangThai: "DaThue" },
       { maGiuong: "G102B", maPhong: "P102", tenGiuong: "Giường 102B", trangThai: "DaThue" },
@@ -77,7 +77,7 @@ async function main() {
       { maGiuong: "G103C", maPhong: "P103", tenGiuong: "Giường 103C", trangThai: "DaThue" },
       { maGiuong: "G103D", maPhong: "P103", tenGiuong: "Giường 103D", trangThai: "Trong"  },
       // P104 - 4 giường
-      { maGiuong: "G104A", maPhong: "P104", tenGiuong: "Giường 104A", trangThai: "Trong"  },
+      { maGiuong: "G104A", maPhong: "P104", tenGiuong: "Giường 104A", trangThai: "DaCoc"  },
       { maGiuong: "G104B", maPhong: "P104", tenGiuong: "Giường 104B", trangThai: "Trong"  },
       { maGiuong: "G104C", maPhong: "P104", tenGiuong: "Giường 104C", trangThai: "Trong"  },
       { maGiuong: "G104D", maPhong: "P104", tenGiuong: "Giường 104D", trangThai: "Trong"  },
@@ -193,8 +193,6 @@ async function main() {
       { maPC: "PC003", maKH: "KH007", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2025-12-20T09:00:00"), tienCoc: 11200000, trangThai: "DaDuyet", hanThanhToan: new Date("2025-12-21T09:00:00") },
       // KH006 cọc 1 giường P104 - Chờ duyệt
       { maPC: "PC004", maKH: "KH006", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-10T08:00:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-12T08:00:00") },
-      // KH003 cọc phòng P104 (phòng rỗng, 4 giường) - Chờ duyệt
-      { maPC: "PC005", maKH: "KH003", maNV: "NV002", maCN: "CN001", maPhong: "P104", ngayCoc: new Date("2026-03-05T10:30:00"), tienCoc: 7200000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-07T10:30:00") },
       // KH004 cọc 3 giường P202 - Đã duyệt
       { maPC: "PC006", maKH: "KH004", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2026-02-28T14:00:00"), tienCoc: 13500000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-03-02T14:00:00") },
       // KH005 cọc phòng P101 (phòng đơn, 1 giường) - Đã duyệt

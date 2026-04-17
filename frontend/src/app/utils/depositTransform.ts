@@ -32,7 +32,9 @@ export function transformBackendDeposit(backendDeposit: any) {
   }
 
   // Determine type (giường vs phòng)
-  const isGiuong = backendDeposit.chiTietPhieuCoc?.length > 0;
+  // Room deposits have maPhong set; bed deposits only have chiTietPhieuCoc
+  const isRoomDeposit = !!backendDeposit.maPhong;
+  const isGiuong = !isRoomDeposit;
   const bedIds = backendDeposit.chiTietPhieuCoc?.map(
     (ct: any) => ct.maGiuong
   ) || [];

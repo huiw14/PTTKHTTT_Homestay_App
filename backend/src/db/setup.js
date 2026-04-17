@@ -35,8 +35,8 @@ const statements = [
   `CREATE OR REPLACE FUNCTION fn_reset_giuong_khi_huy_coc()
    RETURNS TRIGGER AS $$
    BEGIN
-     IF NEW."trangThai" IN ('TuDongHuy', 'HuyThuCong')
-        AND OLD."trangThai" NOT IN ('TuDongHuy', 'HuyThuCong') THEN
+     IF NEW."trangThai" IN ('DaHuy', 'TuDongHuy', 'HuyThuCong')
+        AND OLD."trangThai" NOT IN ('DaHuy', 'TuDongHuy', 'HuyThuCong') THEN
        UPDATE "Giuong" g
        SET "trangThai" = 'Trong'
        FROM "ChiTietPhieuCoc" ct
@@ -55,6 +55,17 @@ const statements = [
          SELECT 1 FROM "Giuong" g2
          WHERE g2."maPhong" = p."maPhong" AND g2."trangThai" != 'Trong'
        );
+
+       -- Also handle room deposit: reset phong directly linked via maPhong
+       IF NEW."maPhong" IS NOT NULL THEN
+         UPDATE "Phong" p
+         SET "trangThai" = 'Trong'
+         WHERE p."maPhong" = NEW."maPhong"
+         AND NOT EXISTS (
+           SELECT 1 FROM "Giuong" g2
+           WHERE g2."maPhong" = p."maPhong" AND g2."trangThai" != 'Trong'
+         );
+       END IF;
      END IF;
      RETURN NEW;
    END;
@@ -157,7 +168,7 @@ async function main() {
   console.log("✅ Triggers đã được áp dụng thành công!");
   console.log("─────────────────────────────────────────────");
   console.log("  trg_cap_nhat_giuong_khi_coc     (PhieuCoc → DaDuyet)");
-  console.log("  trg_reset_giuong_khi_huy_coc    (PhieuCoc → TuDongHuy/HuyThuCong)");
+  console.log("  trg_reset_giuong_khi_huy_coc    (PhieuCoc → DaHuy)");
   console.log("  trg_cap_nhat_giuong_khi_nhan_phong (ThanhVien INSERT)");
   console.log("  trg_reset_phong_khi_thanh_ly    (ThanhLyHD INSERT)");
   console.log("  fn_tu_dong_huy_coc_qua_han      (gọi thủ công hoặc pg_cron)");
