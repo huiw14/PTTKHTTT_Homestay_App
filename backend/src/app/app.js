@@ -1,9 +1,9 @@
 import express from 'express';
-import route from '../routes/index.js';
+import route from './routes/index.js';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
 import cors from "cors";
-import { startDepositAutoCancelCron } from '../services/depositAutoCancelCron.js';
+import { startDepositAutoCancelCron } from './services/depositAutoCancelCron.js';
 //import notFound from './middlewares/notFound.js';
 //import errorHandler from './middlewares/errorHandler.js';
 

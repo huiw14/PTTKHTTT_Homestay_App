@@ -1,7 +1,5 @@
 import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../db/prisma.js';
 
 /**
  * Auto-cancel deposits that exceed 24 hours without approval

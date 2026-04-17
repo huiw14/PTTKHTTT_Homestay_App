@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../db/prisma.js';
 
 /**
  * GET /api/customers - Lấy danh sách khách hàng
@@ -55,6 +53,59 @@ export const getCustomers = async (req, res) => {
   }
 };
 
+export const createCustomer = async (req, res) => {
+  try {
+    const { hoTen, gioiTinh, ngaySinh, cccd, soDienThoai, email, quocTich } = req.body;
+
+    if (!hoTen || !cccd || !soDienThoai) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu thông tin bắt buộc: hoTen, cccd, soDienThoai',
+      });
+    }
+
+    const lastCustomer = await prisma.khachHang.findFirst({
+      orderBy: { maKH: 'desc' },
+    });
+
+    const lastNum = lastCustomer ? parseInt(lastCustomer.maKH.slice(2)) : 0;
+    const maKH = `KH${String(lastNum + 1).padStart(3, '0')}`;
+
+    const customer = await prisma.khachHang.create({
+      data: {
+        maKH,
+        hoTen,
+        gioiTinh: gioiTinh || 'Nam',
+        ngaySinh: ngaySinh ? new Date(ngaySinh) : null,
+        cccd,
+        soDienThoai,
+        email: email || null,
+        quocTich: quocTich || 'Việt Nam',
+        trangThai: 1,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Tạo khách hàng thành công',
+      data: customer,
+    });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: 'CCCD hoặc số điện thoại đã tồn tại trong hệ thống',
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi tạo khách hàng',
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getCustomers,
+  createCustomer,
 };

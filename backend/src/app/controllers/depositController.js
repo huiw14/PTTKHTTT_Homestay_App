@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../db/prisma.js';
 import { sendDepositPaymentRequest, sendPaymentConfirmationEmail } from '../services/emailService.js';
-
-const prisma = new PrismaClient();
 
 /**
  * Tạo mã tự động cho phiếu cọc: PC001, PC002, ...

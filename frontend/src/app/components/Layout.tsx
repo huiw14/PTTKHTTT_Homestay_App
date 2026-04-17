@@ -33,6 +33,8 @@ const MENU_GROUPS = [
     items: [
       { name: "Khách hàng", path: "/sales/customers", icon: Users },
       { name: "Yêu cầu thuê", path: "/sales/requests", icon: Users },
+      { name: "Tra cứu phòng trống", path: "/sales/search", icon: Users },
+      { name: "Lịch hẹn xem phòng", path: "/sales/appointments", icon: Users },
       { name: "Lập phiếu Đặt cọc", path: "/deposits/create", icon: CreditCard },
       { name: "Quản lý Phiếu cọc", path: "/deposits/manage", icon: CreditCard },
     ]
