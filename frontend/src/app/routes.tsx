@@ -13,7 +13,7 @@ import {
   DepositCreate, DepositManage 
 } from "./pages/Module3";
 import { 
-  ContractMembers, ContractManage, ContractReceipts, ContractHandover 
+  ContractMembers, ContractCreate, ContractManage, ContractReceipts, ContractHandover 
 } from "./pages/Module4";
 import { 
   CheckoutSchedules, CheckoutInspection, CheckoutSlips, CheckoutLiquidation 
@@ -48,6 +48,7 @@ export const router = createBrowserRouter([
       { path: "deposits/manage", Component: DepositManage },
       // Module 4: Hợp đồng & Nhận phòng
       { path: "contracts/members", Component: ContractMembers },
+      { path: "contracts/create", Component: ContractCreate },
       { path: "contracts/manage", Component: ContractManage },
       { path: "contracts/receipts", Component: ContractReceipts },
       { path: "contracts/handover", Component: ContractHandover },
