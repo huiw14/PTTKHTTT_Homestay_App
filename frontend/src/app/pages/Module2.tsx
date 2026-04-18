@@ -5,10 +5,9 @@ import {
   Button, Input,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "../components/ui";
-import { MOCK_BRANCHES, CURRENT_USER } from "../data/mockData";
 import { Plus, Edit2, Search, Calendar, Filter, Phone, Mail, Loader2, Trash2, X } from "lucide-react";
 import { customerService, type CustomerPayload } from "../services/customerService";
-import { roomService, requestService, appointmentService, type RequestPayload, type AppointmentPayload } from "../services/salesService";
+import { roomService, requestService, appointmentService, branchService, employeeService, type RequestPayload, type AppointmentPayload } from "../services/salesService";
 import { toast } from "sonner";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
@@ -93,6 +92,14 @@ const EMPTY_CUSTOMER: CustomerPayload = {
   hoTen: '', gioiTinh: 'Nam', ngaySinh: '', cccd: '', soDienThoai: '', email: '', quocTich: 'Việt Nam',
 };
 
+function validateCustomerForm(form: CustomerPayload) {
+  if (!form.hoTen?.trim()) return 'Vui lòng nhập họ tên khách hàng';
+  if (!form.cccd?.trim()) return 'Vui lòng nhập CCCD';
+  if (!form.soDienThoai?.trim()) return 'Vui lòng nhập số điện thoại';
+  if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) return 'Email không hợp lệ';
+  return '';
+}
+
 export function SalesCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,6 +132,11 @@ export function SalesCustomers() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errMsg = validateCustomerForm(form);
+    if (errMsg) {
+      toast.error(errMsg);
+      return;
+    }
     setSubmitting(true);
     try {
       await customerService.createCustomer(form);
@@ -191,7 +203,7 @@ export function SalesCustomers() {
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="col-span-2 space-y-1">
                 <label className="text-sm font-medium">Họ tên <span className="text-red-500">*</span></label>
-                <Input placeholder="Nguyễn Văn A" value={form.hoTen} onChange={e => f('hoTen', e.target.value)} required />
+                <Input placeholder="Nguyễn Văn A" value={form.hoTen} onChange={e => f('hoTen', e.target.value)} />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Giới tính</label>
@@ -205,11 +217,11 @@ export function SalesCustomers() {
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">CCCD <span className="text-red-500">*</span></label>
-                <Input placeholder="079xxxxxxxxx" value={form.cccd} onChange={e => f('cccd', e.target.value)} required />
+                <Input placeholder="079xxxxxxxxx" value={form.cccd} onChange={e => f('cccd', e.target.value)} />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Số điện thoại <span className="text-red-500">*</span></label>
-                <Input placeholder="09xxxxxxxx" value={form.soDienThoai} onChange={e => f('soDienThoai', e.target.value)} required />
+                <Input placeholder="09xxxxxxxx" value={form.soDienThoai} onChange={e => f('soDienThoai', e.target.value)} />
               </div>
               <div className="col-span-2 space-y-1">
                 <label className="text-sm font-medium">Email</label>
@@ -234,9 +246,17 @@ export function SalesCustomers() {
 // ─── 2. Ghi nhận Yêu cầu thuê ────────────────────────────────────────────────
 
 const EMPTY_REQUEST: RequestPayload = {
-  maKH: '', maNV: CURRENT_USER.id, soNguoi: 1, gioiTinh: 'Nam',
+  maKH: '', maNV: '', soNguoi: 1, gioiTinh: 'Nam',
   khuVuc: '', loaiPhong: '', mucGia: undefined, ngayVaoO: '', thoiHanThue: 6, ghiChu: '',
 };
+
+function validateRequestForm(form: RequestPayload) {
+  if (!form.maKH?.trim()) return 'Vui lòng chọn khách hàng';
+  if (!form.maNV?.trim()) return 'Vui lòng chọn nhân viên phụ trách';
+  if (!form.ngayVaoO?.trim()) return 'Vui lòng chọn ngày vào ở';
+  if (!form.thoiHanThue || form.thoiHanThue < 1) return 'Thời hạn thuê phải lớn hơn 0 tháng';
+  return '';
+}
 
 export function SalesRequests() {
   const [requests, setRequests] = useState<any[]>([]);
@@ -250,9 +270,12 @@ export function SalesRequests() {
   const [form, setForm] = useState<RequestPayload>(EMPTY_REQUEST);
   const [submitting, setSubmitting] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [updateTarget, setUpdateTarget] = useState<any>(null);
   const [newStatus, setNewStatus] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<any>(null);
+  const [editForm, setEditForm] = useState<RequestPayload>(EMPTY_REQUEST);
 
   const load = async (q: string, s: string, p: number) => {
     setLoading(true);
@@ -273,17 +296,31 @@ export function SalesRequests() {
 
   useEffect(() => {
     customerService.getCustomers({ limit: 200 }).then(r => setCustomers(r.data ?? [])).catch(() => {});
+    employeeService.getEmployees('sale').then(r => {
+      const employeeData = r.data ?? [];
+      setEmployees(employeeData);
+      if (employeeData.length > 0) {
+        setForm(prev => ({ ...prev, maNV: prev.maNV || employeeData[0].maNV }));
+      }
+    }).catch(() => {});
   }, []);
 
   const f = (k: keyof RequestPayload, v: any) => setForm(p => ({ ...p, [k]: v }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errMsg = validateRequestForm(form);
+    if (errMsg) {
+      toast.error(errMsg);
+      return;
+    }
     setSubmitting(true);
     try {
       await requestService.createRequest(form);
       toast.success('Tạo yêu cầu thuê thành công');
-      setCreateOpen(false); setForm(EMPTY_REQUEST); load(search, statusFilter, page);
+      setCreateOpen(false);
+      setForm({ ...EMPTY_REQUEST, maNV: employees[0]?.maNV || '' });
+      load(search, statusFilter, page);
     } catch (err: any) { toast.error(err.message); }
     finally { setSubmitting(false); }
   };
@@ -304,6 +341,51 @@ export function SalesRequests() {
       toast.success('Xóa yêu cầu thành công');
       setDeleteTarget(null); load(search, statusFilter, page);
     } catch (err: any) { toast.error(err.message); }
+  };
+
+  const openEditDialog = (request: any) => {
+    setEditTarget(request);
+    setEditForm({
+      maKH: request.maKH,
+      maNV: request.maNV,
+      soNguoi: request.soNguoi,
+      gioiTinh: request.gioiTinh,
+      khuVuc: request.khuVuc || '',
+      loaiPhong: request.loaiPhong || '',
+      mucGia: request.mucGia ? Number(request.mucGia) : undefined,
+      ngayVaoO: request.ngayVaoO ? new Date(request.ngayVaoO).toISOString().slice(0, 10) : '',
+      thoiHanThue: request.thoiHanThue,
+      ghiChu: request.ghiChu || '',
+    });
+  };
+
+  const ef = (k: keyof RequestPayload, v: any) => setEditForm(p => ({ ...p, [k]: v }));
+
+  const handleSaveEdit = async () => {
+    if (!editTarget) return;
+    const errMsg = validateRequestForm(editForm);
+    if (errMsg) {
+      toast.error(errMsg);
+      return;
+    }
+
+    try {
+      await requestService.updateRequest(editTarget.maYCT, {
+        soNguoi: editForm.soNguoi,
+        gioiTinh: editForm.gioiTinh,
+        khuVuc: editForm.khuVuc,
+        loaiPhong: editForm.loaiPhong,
+        mucGia: editForm.mucGia,
+        ngayVaoO: editForm.ngayVaoO,
+        thoiHanThue: editForm.thoiHanThue,
+        ghiChu: editForm.ghiChu,
+      });
+      toast.success('Cập nhật yêu cầu thuê thành công');
+      setEditTarget(null);
+      load(search, statusFilter, page);
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   const nextStatuses: Record<string, string[]> = {
@@ -363,6 +445,11 @@ export function SalesRequests() {
                   <TableCell><StatusBadge status={r.trangThai} /></TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      {['ChoDuyet', 'DaHen'].includes(r.trangThai) && (
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(r)} title="Chỉnh sửa yêu cầu">
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       {(nextStatuses[r.trangThai]?.length ?? 0) > 0 && (
                         <Button variant="outline" size="sm" className="text-xs"
                           onClick={() => { setUpdateTarget(r); setNewStatus(nextStatuses[r.trangThai][0]); }}>
@@ -398,6 +485,13 @@ export function SalesRequests() {
                   {customers.map(c => <option key={c.maKH} value={c.maKH}>{c.hoTen} ({c.soDienThoai})</option>)}
                 </Sel>
               </div>
+              <div className="col-span-2 space-y-1">
+                <label className="text-sm font-medium">Nhân viên phụ trách <span className="text-red-500">*</span></label>
+                <Sel value={form.maNV} onChange={v => f('maNV', v)}>
+                  <option value="">-- Chọn nhân viên --</option>
+                  {employees.map((e) => <option key={e.maNV} value={e.maNV}>{e.hoTen} ({e.maNV})</option>)}
+                </Sel>
+              </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Số người</label>
                 <Input type="number" min={1} value={form.soNguoi} onChange={e => f('soNguoi', parseInt(e.target.value))} />
@@ -423,11 +517,11 @@ export function SalesRequests() {
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Ngày vào ở <span className="text-red-500">*</span></label>
-                <Input type="date" value={form.ngayVaoO} onChange={e => f('ngayVaoO', e.target.value)} required />
+                <Input type="date" value={form.ngayVaoO} onChange={e => f('ngayVaoO', e.target.value)} />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Thời hạn thuê (tháng) <span className="text-red-500">*</span></label>
-                <Input type="number" min={1} value={form.thoiHanThue} onChange={e => f('thoiHanThue', parseInt(e.target.value))} required />
+                <Input type="number" min={1} value={form.thoiHanThue} onChange={e => f('thoiHanThue', parseInt(e.target.value))} />
               </div>
               <div className="col-span-2 space-y-1">
                 <label className="text-sm font-medium">Mức giá tối đa (đ)</label>
@@ -441,7 +535,7 @@ export function SalesRequests() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Hủy</Button>
-              <Button type="submit" disabled={submitting || !form.maKH}>{submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Tạo yêu cầu</Button>
+              <Button type="submit" disabled={submitting || !form.maKH || !form.maNV}>{submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Tạo yêu cầu</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -480,6 +574,59 @@ export function SalesRequests() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit request dialog */}
+      <Dialog open={!!editTarget} onOpenChange={v => !v && setEditTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Chỉnh sửa yêu cầu thuê</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Số người</label>
+              <Input type="number" min={1} value={editForm.soNguoi} onChange={e => ef('soNguoi', parseInt(e.target.value))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Giới tính phòng</label>
+              <Sel value={editForm.gioiTinh ?? 'Nam'} onChange={v => ef('gioiTinh', v)}>
+                <option value="Nam">Nam</option><option value="Nu">Nữ</option><option value="Chung">Chung</option>
+              </Sel>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Khu vực mong muốn</label>
+              <Input value={editForm.khuVuc} onChange={e => ef('khuVuc', e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Loại phòng</label>
+              <Sel value={editForm.loaiPhong ?? ''} onChange={v => ef('loaiPhong', v)}>
+                <option value="">-- Không yêu cầu --</option>
+                <option value="Phòng đơn">Phòng đơn</option>
+                <option value="Phòng đôi">Phòng đôi</option>
+                <option value="Phòng ở ghép">Phòng ở ghép</option>
+              </Sel>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Ngày vào ở</label>
+              <Input type="date" value={editForm.ngayVaoO} onChange={e => ef('ngayVaoO', e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Thời hạn thuê (tháng)</label>
+              <Input type="number" min={1} value={editForm.thoiHanThue} onChange={e => ef('thoiHanThue', parseInt(e.target.value))} />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm font-medium">Mức giá tối đa (đ)</label>
+              <Input type="number" value={editForm.mucGia ?? ''} onChange={e => ef('mucGia', e.target.value ? parseInt(e.target.value) : undefined)} />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm font-medium">Ghi chú</label>
+              <textarea className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[64px]"
+                value={editForm.ghiChu} onChange={e => ef('ghiChu', e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Hủy</Button>
+            <Button onClick={handleSaveEdit}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -488,8 +635,16 @@ export function SalesRequests() {
 
 export function SalesSearch() {
   const [rooms, setRooms] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ maCN: '', gioiTinh: '', priceRange: '', trangThai: '' });
+  const [bookOpen, setBookOpen] = useState(false);
+  const [bookingRoom, setBookingRoom] = useState<any | null>(null);
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const [bookingForm, setBookingForm] = useState<AppointmentPayload>({
+    maYCT: '', maPhong: '', maGiuong: '', ngayHen: '', gioHen: '09:00', ghiChu: '',
+  });
 
   const load = async () => {
     setLoading(true);
@@ -512,9 +667,48 @@ export function SalesSearch() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    branchService.getBranches().then(r => setBranches(r.data ?? [])).catch(() => setBranches([]));
+    requestService.getRequests({ limit: 200 }).then(r => setRequests(r.data ?? [])).catch(() => setRequests([]));
+  }, []);
 
   const ff = (k: string, v: string) => setFilters(p => ({ ...p, [k]: v }));
+  const bf = (k: keyof AppointmentPayload, v: string) => setBookingForm(p => ({ ...p, [k]: v }));
+
+  const openBookDialog = (room: any) => {
+    setBookingRoom(room);
+    setBookingForm({
+      maYCT: '',
+      maPhong: room.maPhong,
+      maGiuong: '',
+      ngayHen: '',
+      gioHen: '09:00',
+      ghiChu: `Xem phong ${room.maPhong}`,
+    });
+    setBookOpen(true);
+  };
+
+  const submitBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errMsg = validateAppointmentForm(bookingForm);
+    if (errMsg) {
+      toast.error(errMsg);
+      return;
+    }
+
+    setBookingSubmitting(true);
+    try {
+      await appointmentService.createAppointment(bookingForm);
+      toast.success('Tạo lịch hẹn thành công');
+      setBookOpen(false);
+      setBookingRoom(null);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setBookingSubmitting(false);
+    }
+  };
 
   const trangThaiLabel: Record<string, string> = {
     Trong: 'Còn trống', DaThue: 'Đã thuê', DaCoc: 'Đã cọc', BaoDuong: 'Bảo dưỡng',
@@ -534,7 +728,7 @@ export function SalesSearch() {
             <label className="text-xs font-medium text-slate-500">Cơ sở</label>
             <Sel value={filters.maCN} onChange={v => ff('maCN', v)}>
               <option value="">Tất cả cơ sở</option>
-              {MOCK_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              {branches.map((b) => <option key={b.maCN} value={b.maCN}>{b.tenCN}</option>)}
             </Sel>
           </div>
           <div className="space-y-1">
@@ -599,18 +793,84 @@ export function SalesSearch() {
                 </div>
                 <p className="text-xs text-slate-500 mb-2">{r.loaiPhong?.tenLoai} · {r.sucChua} chỗ</p>
                 <p className="text-lg font-bold text-red-500">{r.giaThue.toLocaleString('vi-VN')} đ <span className="text-xs font-normal text-slate-500">/giường/tháng</span></p>
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" disabled={r.soGiuongTrong < 1} onClick={() => openBookDialog(r)}>
+                    Đặt lịch hẹn
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={bookOpen} onOpenChange={(v) => { if (!v) setBookingRoom(null); setBookOpen(v); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Đặt lịch hẹn từ phòng tra cứu</DialogTitle></DialogHeader>
+          <form onSubmit={submitBooking}>
+            <div className="space-y-3 py-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Phòng</label>
+                <Input value={bookingRoom ? `${bookingRoom.maPhong} - ${bookingRoom.tenPhong}` : ''} disabled />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Yêu cầu thuê <span className="text-red-500">*</span></label>
+                <Sel value={bookingForm.maYCT} onChange={v => bf('maYCT', v)}>
+                  <option value="">-- Chọn yêu cầu --</option>
+                  {requests.filter(r => ['ChoDuyet', 'DaHen'].includes(r.trangThai)).map(r => (
+                    <option key={r.maYCT} value={r.maYCT}>{r.maYCT} – {r.khachHang?.hoTen}</option>
+                  ))}
+                </Sel>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Giường (tuỳ chọn)</label>
+                <Sel value={bookingForm.maGiuong ?? ''} onChange={v => bf('maGiuong', v)}>
+                  <option value="">-- Không chọn giường cụ thể --</option>
+                  {(bookingRoom?.giuong ?? [])
+                    .filter((g: any) => g.trangThai === 'Trong')
+                    .map((g: any) => (
+                      <option key={g.maGiuong} value={g.maGiuong}>{g.maGiuong}</option>
+                    ))}
+                </Sel>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Ngày hẹn</label>
+                  <Input type="date" value={bookingForm.ngayHen} onChange={e => bf('ngayHen', e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Giờ hẹn</label>
+                  <Input type="time" value={bookingForm.gioHen} onChange={e => bf('gioHen', e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Ghi chú</label>
+                <textarea className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[64px]"
+                  value={bookingForm.ghiChu} onChange={e => bf('ghiChu', e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setBookOpen(false)}>Hủy</Button>
+              <Button type="submit" disabled={bookingSubmitting}>{bookingSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Lưu lịch hẹn</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 // ─── 4. Quản lý Lịch hẹn xem phòng ──────────────────────────────────────────
 
-const EMPTY_APPT: AppointmentPayload = { maYCT: '', ngayHen: '', gioHen: '09:00', ghiChu: '' };
+const EMPTY_APPT: AppointmentPayload = { maYCT: '', maPhong: '', maGiuong: '', ngayHen: '', gioHen: '09:00', ghiChu: '' };
+
+function validateAppointmentForm(form: AppointmentPayload) {
+  if (!form.maYCT?.trim()) return 'Vui lòng chọn yêu cầu thuê';
+  if (!form.maPhong?.trim()) return 'Vui lòng chọn phòng xem';
+  if (!form.ngayHen?.trim()) return 'Vui lòng chọn ngày hẹn';
+  if (!form.gioHen?.trim()) return 'Vui lòng chọn giờ hẹn';
+  return '';
+}
 
 export function SalesAppointments() {
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -623,6 +883,7 @@ export function SalesAppointments() {
   const [form, setForm] = useState<AppointmentPayload>(EMPTY_APPT);
   const [submitting, setSubmitting] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
   const [updateTarget, setUpdateTarget] = useState<any>(null);
   const [newStatus, setNewStatus] = useState('');
   const [newNote, setNewNote] = useState('');
@@ -643,12 +904,18 @@ export function SalesAppointments() {
 
   useEffect(() => {
     requestService.getRequests({ limit: 200 }).then(r => setRequests(r.data ?? [])).catch(() => {});
+    roomService.getRooms({ coGiuongTrong: true }).then(r => setRooms(r.data ?? [])).catch(() => setRooms([]));
   }, []);
 
   const f = (k: keyof AppointmentPayload, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errMsg = validateAppointmentForm(form);
+    if (errMsg) {
+      toast.error(errMsg);
+      return;
+    }
     setSubmitting(true);
     try {
       await appointmentService.createAppointment(form);
@@ -694,15 +961,15 @@ export function SalesAppointments() {
             <TableHeader>
               <TableRow>
                 <TableHead>Mã LH</TableHead><TableHead>Khách hàng</TableHead><TableHead>Mã YC</TableHead>
-                <TableHead>Ngày hẹn</TableHead><TableHead>Giờ hẹn</TableHead><TableHead>Trạng thái</TableHead>
+                <TableHead>Phòng/Giường</TableHead><TableHead>Ngày hẹn</TableHead><TableHead>Giờ hẹn</TableHead><TableHead>Trạng thái</TableHead>
                 <TableHead>Ghi chú</TableHead><TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Đang tải...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Đang tải...</TableCell></TableRow>
               ) : appointments.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-400">Không có lịch hẹn nào</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-slate-400">Không có lịch hẹn nào</TableCell></TableRow>
               ) : appointments.map(a => (
                 <TableRow key={a.maLH}>
                   <TableCell className="font-medium">{a.maLH}</TableCell>
@@ -711,6 +978,10 @@ export function SalesAppointments() {
                     <div className="text-xs text-slate-500">{a.yeuCauThue?.khachHang?.soDienThoai}</div>
                   </TableCell>
                   <TableCell className="text-blue-600 font-medium">{a.maYCT}</TableCell>
+                  <TableCell>
+                    <div className="text-sm font-medium">{a.phong?.tenPhong || a.maPhong || '—'}</div>
+                    <div className="text-xs text-slate-500">{a.giuong?.tenGiuong || a.maGiuong || 'Không chọn giường'}</div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm">
                       <Calendar className="w-3.5 h-3.5 text-blue-400" />{fmtDate(a.ngayHen)}
@@ -750,14 +1021,34 @@ export function SalesAppointments() {
                   ))}
                 </Sel>
               </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Phòng xem <span className="text-red-500">*</span></label>
+                <Sel value={form.maPhong} onChange={v => { f('maPhong', v); f('maGiuong', ''); }}>
+                  <option value="">-- Chọn phòng --</option>
+                  {rooms.map((r) => (
+                    <option key={r.maPhong} value={r.maPhong}>{r.maPhong} – {r.tenPhong} ({r.soGiuongTrong}/{r.tongGiuong} trống)</option>
+                  ))}
+                </Sel>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Giường (tuỳ chọn)</label>
+                <Sel value={form.maGiuong ?? ''} onChange={v => f('maGiuong', v)}>
+                  <option value="">-- Không chọn giường cụ thể --</option>
+                  {(rooms.find(r => r.maPhong === form.maPhong)?.giuong ?? [])
+                    .filter((g: any) => g.trangThai === 'Trong')
+                    .map((g: any) => (
+                      <option key={g.maGiuong} value={g.maGiuong}>{g.maGiuong}</option>
+                    ))}
+                </Sel>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Ngày hẹn <span className="text-red-500">*</span></label>
-                  <Input type="date" value={form.ngayHen} onChange={e => f('ngayHen', e.target.value)} required />
+                  <Input type="date" value={form.ngayHen} onChange={e => f('ngayHen', e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Giờ hẹn <span className="text-red-500">*</span></label>
-                  <Input type="time" value={form.gioHen} onChange={e => f('gioHen', e.target.value)} required />
+                  <Input type="time" value={form.gioHen} onChange={e => f('gioHen', e.target.value)} />
                 </div>
               </div>
               <div className="space-y-1">
@@ -768,7 +1059,7 @@ export function SalesAppointments() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Hủy</Button>
-              <Button type="submit" disabled={submitting || !form.maYCT}>{submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Tạo lịch hẹn</Button>
+              <Button type="submit" disabled={submitting || !form.maYCT || !form.maPhong}>{submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Tạo lịch hẹn</Button>
             </DialogFooter>
           </form>
         </DialogContent>

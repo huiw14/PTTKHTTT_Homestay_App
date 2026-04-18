@@ -56,11 +56,34 @@ export const getCustomers = async (req, res) => {
 export const createCustomer = async (req, res) => {
   try {
     const { hoTen, gioiTinh, ngaySinh, cccd, soDienThoai, email, quocTich } = req.body;
+    const normalizedHoTen = hoTen?.trim();
+    const normalizedCccd = cccd?.trim();
+    const normalizedPhone = soDienThoai?.trim();
+    const normalizedEmail = email?.trim();
 
-    if (!hoTen || !cccd || !soDienThoai) {
+    if (!normalizedHoTen || !normalizedCccd || !normalizedPhone) {
       return res.status(400).json({
         success: false,
         message: 'Thiếu thông tin bắt buộc: hoTen, cccd, soDienThoai',
+      });
+    }
+
+    const existingCustomer = await prisma.khachHang.findFirst({
+      where: {
+        OR: [
+          { cccd: normalizedCccd },
+          { soDienThoai: normalizedPhone },
+        ],
+      },
+    });
+
+    if (existingCustomer) {
+      const isDuplicateCccd = existingCustomer.cccd === normalizedCccd;
+      return res.status(400).json({
+        success: false,
+        message: isDuplicateCccd
+          ? 'CCCD đã tồn tại trong hệ thống'
+          : 'Số điện thoại đã tồn tại trong hệ thống',
       });
     }
 
@@ -74,12 +97,12 @@ export const createCustomer = async (req, res) => {
     const customer = await prisma.khachHang.create({
       data: {
         maKH,
-        hoTen,
+        hoTen: normalizedHoTen,
         gioiTinh: gioiTinh || 'Nam',
         ngaySinh: ngaySinh ? new Date(ngaySinh) : null,
-        cccd,
-        soDienThoai,
-        email: email || null,
+        cccd: normalizedCccd,
+        soDienThoai: normalizedPhone,
+        email: normalizedEmail || null,
         quocTich: quocTich || 'Việt Nam',
         trangThai: 1,
       },
@@ -94,7 +117,7 @@ export const createCustomer = async (req, res) => {
     if (error.code === 'P2002') {
       return res.status(400).json({
         success: false,
-        message: 'CCCD hoặc số điện thoại đã tồn tại trong hệ thống',
+        message: 'CCCD đã tồn tại trong hệ thống',
       });
     }
     res.status(500).json({

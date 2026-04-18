@@ -1,5 +1,23 @@
 const API_BASE = 'http://localhost:5000/api';
 
+function getAuthHeaders() {
+  if (typeof window === 'undefined') return {};
+
+  const userRaw = window.localStorage.getItem('currentUser');
+  if (!userRaw) return {};
+
+  try {
+    const user = JSON.parse(userRaw);
+    if (!user?.id || !user?.role) return {};
+    return {
+      'x-user-id': String(user.id),
+      'x-user-role': String(user.role),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export interface CustomerPayload {
   hoTen: string;
   gioiTinh?: 'Nam' | 'Nu';
@@ -18,7 +36,7 @@ export const customerService = {
     if (filters?.limit) params.append('limit', filters.limit.toString());
 
     const response = await fetch(`${API_BASE}/customers?${params}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) throw new Error(`Lỗi tải danh sách khách hàng: ${response.statusText}`);
@@ -28,7 +46,7 @@ export const customerService = {
   async createCustomer(payload: CustomerPayload) {
     const response = await fetch(`${API_BASE}/customers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(payload),
     });
 

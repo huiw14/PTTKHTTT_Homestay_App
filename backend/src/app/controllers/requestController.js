@@ -67,6 +67,22 @@ export const createRequest = async (req, res) => {
     if (!customer) return res.status(400).json({ success: false, message: 'Khách hàng không tồn tại' });
     if (!employee) return res.status(400).json({ success: false, message: 'Nhân viên không tồn tại' });
 
+    const moveInDate = new Date(ngayVaoO);
+    if (Number.isNaN(moveInDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Ngày vào ở không hợp lệ' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (moveInDate < today) {
+      return res.status(400).json({ success: false, message: 'Ngày vào ở phải từ hôm nay trở đi' });
+    }
+
+    const term = parseInt(thoiHanThue);
+    if (Number.isNaN(term) || term < 1) {
+      return res.status(400).json({ success: false, message: 'Thời hạn thuê phải lớn hơn hoặc bằng 1 tháng' });
+    }
+
     const maYCT = await generateRequestCode();
 
     const request = await prisma.yeuCauThue.create({
@@ -80,8 +96,8 @@ export const createRequest = async (req, res) => {
         khuVuc: khuVuc || null,
         loaiPhong: loaiPhong || null,
         mucGia: mucGia ? parseInt(mucGia) : null,
-        ngayVaoO: new Date(ngayVaoO),
-        thoiHanThue: parseInt(thoiHanThue),
+        ngayVaoO: moveInDate,
+        thoiHanThue: term,
         trangThai: 'ChoDuyet',
         ghiChu: ghiChu || null,
       },
@@ -97,17 +113,98 @@ export const createRequest = async (req, res) => {
 export const updateRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { trangThai, ghiChu } = req.body;
+    const {
+      trangThai,
+      ghiChu,
+      soNguoi,
+      gioiTinh,
+      khuVuc,
+      loaiPhong,
+      mucGia,
+      ngayVaoO,
+      thoiHanThue,
+    } = req.body;
+
+    if (trangThai !== undefined && !['ChoDuyet', 'DaHen', 'DaCoc', 'Huy'].includes(trangThai)) {
+      return res.status(400).json({ success: false, message: 'Trạng thái yêu cầu không hợp lệ' });
+    }
 
     const existing = await prisma.yeuCauThue.findUnique({ where: { maYCT: id } });
     if (!existing) return res.status(404).json({ success: false, message: 'Yêu cầu không tồn tại' });
 
+    const validTransitions = {
+      ChoDuyet: ['DaHen', 'Huy'],
+      DaHen: ['DaCoc', 'Huy'],
+      DaCoc: [],
+      Huy: [],
+    };
+
+    if (trangThai && !validTransitions[existing.trangThai]?.includes(trangThai)) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể chuyển trạng thái từ ${existing.trangThai} sang ${trangThai}`,
+      });
+    }
+
+    const updateData = {
+      ...(trangThai && { trangThai }),
+      ...(ghiChu !== undefined && { ghiChu }),
+    };
+
+    if (soNguoi !== undefined) {
+      const people = parseInt(soNguoi);
+      if (Number.isNaN(people) || people < 1) {
+        return res.status(400).json({ success: false, message: 'Số người phải lớn hơn hoặc bằng 1' });
+      }
+      updateData.soNguoi = people;
+    }
+
+    if (gioiTinh !== undefined) {
+      if (!['Nam', 'Nu', 'Chung'].includes(gioiTinh)) {
+        return res.status(400).json({ success: false, message: 'Giới tính phòng không hợp lệ' });
+      }
+      updateData.gioiTinh = gioiTinh;
+    }
+
+    if (khuVuc !== undefined) updateData.khuVuc = khuVuc || null;
+    if (loaiPhong !== undefined) updateData.loaiPhong = loaiPhong || null;
+
+    if (mucGia !== undefined) {
+      if (mucGia === null || mucGia === '') {
+        updateData.mucGia = null;
+      } else {
+        const budget = parseInt(mucGia);
+        if (Number.isNaN(budget) || budget < 0) {
+          return res.status(400).json({ success: false, message: 'Mức giá không hợp lệ' });
+        }
+        updateData.mucGia = budget;
+      }
+    }
+
+    if (ngayVaoO !== undefined) {
+      const moveInDate = new Date(ngayVaoO);
+      if (Number.isNaN(moveInDate.getTime())) {
+        return res.status(400).json({ success: false, message: 'Ngày vào ở không hợp lệ' });
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (moveInDate < today) {
+        return res.status(400).json({ success: false, message: 'Ngày vào ở phải từ hôm nay trở đi' });
+      }
+      updateData.ngayVaoO = moveInDate;
+    }
+
+    if (thoiHanThue !== undefined) {
+      const term = parseInt(thoiHanThue);
+      if (Number.isNaN(term) || term < 1) {
+        return res.status(400).json({ success: false, message: 'Thời hạn thuê phải lớn hơn hoặc bằng 1 tháng' });
+      }
+      updateData.thoiHanThue = term;
+    }
+
     const updated = await prisma.yeuCauThue.update({
       where: { maYCT: id },
-      data: {
-        ...(trangThai && { trangThai }),
-        ...(ghiChu !== undefined && { ghiChu }),
-      },
+      data: updateData,
       include: { khachHang: true, nhanVien: true },
     });
 

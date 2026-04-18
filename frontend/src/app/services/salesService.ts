@@ -1,7 +1,25 @@
 const API_BASE = 'http://localhost:5000/api';
 
+function getAuthHeaders() {
+  if (typeof window === 'undefined') return {};
+
+  const userRaw = window.localStorage.getItem('currentUser');
+  if (!userRaw) return {};
+
+  try {
+    const user = JSON.parse(userRaw);
+    if (!user?.id || !user?.role) return {};
+    return {
+      'x-user-id': String(user.id),
+      'x-user-role': String(user.role),
+    };
+  } catch {
+    return {};
+  }
+}
+
 async function apiFetch(url: string, options?: RequestInit) {
-  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, ...options });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `Request failed: ${res.statusText}`);
@@ -35,6 +53,17 @@ export const roomService = {
   },
 };
 
+// ─── MASTER DATA ─────────────────────────────────────────────────────────────
+
+export const branchService = {
+  getBranches: () => apiFetch(`${API_BASE}/branches`),
+};
+
+export const employeeService = {
+  getEmployees: (role: 'sale' | 'quanly' | 'all' = 'sale') =>
+    apiFetch(`${API_BASE}/employees?role=${role}`),
+};
+
 // ─── REQUESTS (YeuCauThue) ────────────────────────────────────────────────────
 
 export interface RequestPayload {
@@ -50,6 +79,18 @@ export interface RequestPayload {
   ghiChu?: string;
 }
 
+export interface RequestUpdatePayload {
+  trangThai?: string;
+  ghiChu?: string;
+  soNguoi?: number;
+  gioiTinh?: string;
+  khuVuc?: string;
+  loaiPhong?: string;
+  mucGia?: number;
+  ngayVaoO?: string;
+  thoiHanThue?: number;
+}
+
 export const requestService = {
   getRequests: (filters?: { search?: string; status?: string; page?: number; limit?: number }) => {
     const p = new URLSearchParams();
@@ -63,7 +104,7 @@ export const requestService = {
   createRequest: (payload: RequestPayload) =>
     apiFetch(`${API_BASE}/requests`, { method: 'POST', body: JSON.stringify(payload) }),
 
-  updateRequest: (id: string, payload: { trangThai?: string; ghiChu?: string }) =>
+  updateRequest: (id: string, payload: RequestUpdatePayload) =>
     apiFetch(`${API_BASE}/requests/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   deleteRequest: (id: string) =>
@@ -74,6 +115,8 @@ export const requestService = {
 
 export interface AppointmentPayload {
   maYCT: string;
+  maPhong: string;
+  maGiuong?: string;
   ngayHen: string;
   gioHen: string;
   ghiChu?: string;

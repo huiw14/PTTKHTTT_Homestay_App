@@ -103,6 +103,7 @@ model Phong {
   chiNhanh  ChiNhanh  @relation(fields: [maCN], references: [maCN])
   loaiPhong LoaiPhong @relation(fields: [maLoai], references: [maLoai])
   giuong    Giuong[]
+  lichHen   LichHen[]
   phieuCoc  PhieuCoc[]
 
   @@index([maCN])
@@ -121,6 +122,7 @@ model Giuong {
   chiTietPhieuCoc    ChiTietPhieuCoc[]
   thanhVien          ThanhVien[]
   chiTietBanGiao     ChiTietBanGiao[]
+  lichHen            LichHen[]
 
   @@index([maPhong])
   @@index([trangThai])
@@ -158,12 +160,19 @@ model YeuCauThue {
 model LichHen {
   maLH      String   @id @db.VarChar(10)
   maYCT     String   @db.VarChar(10)
+  maPhong   String?  @db.VarChar(10)
+  maGiuong  String?  @db.VarChar(10)
   ngayHen   DateTime @db.Date
   gioHen    String   @db.VarChar(10)
   trangThai String   @db.VarChar(20)  // "ChoXacNhan" | "DaHen" | "HoanThanh" | "Huy"
   ghiChu    String?  @db.Text
 
   yeuCauThue YeuCauThue @relation(fields: [maYCT], references: [maYCT])
+  phong      Phong?     @relation(fields: [maPhong], references: [maPhong])
+  giuong     Giuong?    @relation(fields: [maGiuong], references: [maGiuong])
+
+  @@index([maPhong])
+  @@index([maGiuong])
 
   @@map("LichHen")
 }

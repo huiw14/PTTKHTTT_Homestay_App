@@ -270,7 +270,96 @@ export const sendPaymentConfirmationEmail = async (customerEmail, customerName, 
   }
 };
 
+/**
+ * Gửi email xác nhận lịch hẹn xem phòng
+ */
+export const sendAppointmentConfirmationEmail = async (customerEmail, customerName, appointment, request) => {
+  try {
+    // Wait for nodemailer to be ready (up to 5 seconds)
+    let attempts = 0;
+    while (!nodemailer && attempts < 50) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+
+    if (!nodemailer) {
+      return {
+        success: false,
+        message: 'Email service not configured. Nodemailer not loaded.',
+        error: 'Nodemailer initialization timeout',
+      };
+    }
+
+    const transporter = getTransporter();
+    if (!transporter) {
+      throw new Error('Email transporter not initialized - check .env configuration');
+    }
+
+    if (!customerEmail || !customerEmail.includes('@')) {
+      throw new Error(`Invalid customer email: ${customerEmail}`);
+    }
+
+    const appointmentDate = new Date(appointment.ngayHen).toLocaleDateString('vi-VN');
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+        <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h1 style="color: #1e3a8a; font-size: 24px; margin-top: 0;">Xác nhận lịch hẹn xem phòng</h1>
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">Chào ${customerName},</p>
+          <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+            Lịch hẹn xem phòng của bạn đã được tạo thành công.
+          </p>
+          <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; font-weight: bold; color: #1e3a8a; width: 35%;">Mã lịch hẹn:</td>
+                <td style="padding: 8px; color: #374151;">${appointment.maLH}</td>
+              </tr>
+              <tr style="background-color: white;">
+                <td style="padding: 8px; font-weight: bold; color: #1e3a8a;">Ngày hẹn:</td>
+                <td style="padding: 8px; color: #374151;">${appointmentDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; font-weight: bold; color: #1e3a8a;">Giờ hẹn:</td>
+                <td style="padding: 8px; color: #374151;">${appointment.gioHen}</td>
+              </tr>
+              <tr style="background-color: white;">
+                <td style="padding: 8px; font-weight: bold; color: #1e3a8a;">Khu vực:</td>
+                <td style="padding: 8px; color: #374151;">${request.khuVuc || 'Chưa cập nhật'}</td>
+              </tr>
+            </table>
+          </div>
+          <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
+            Nếu có thay đổi lịch hẹn, vui lòng liên hệ sớm để được hỗ trợ.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'noreply@homestay.com',
+      to: customerEmail,
+      subject: `Xác nhận lịch hẹn xem phòng - ${appointment.maLH}`,
+      html: htmlContent,
+    });
+
+    return {
+      success: true,
+      message: 'Email xác nhận lịch hẹn đã được gửi',
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    console.error('❌ Error sending appointment confirmation email:', error.message);
+    return {
+      success: false,
+      message: 'Lỗi gửi email xác nhận lịch hẹn: ' + error.message,
+      error: error.message,
+    };
+  }
+};
+
 export default {
   sendDepositPaymentRequest,
   sendPaymentConfirmationEmail,
+  sendAppointmentConfirmationEmail,
 };
