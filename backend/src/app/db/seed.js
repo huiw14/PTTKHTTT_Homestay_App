@@ -67,7 +67,7 @@ async function main() {
   await prisma.giuong.createMany({
     data: [
       // P101 - 1 giường đơn
-      { maGiuong: "G101A", maPhong: "P101", tenGiuong: "Giường 101A", trangThai: "Trong"  },
+      { maGiuong: "G101A", maPhong: "P101", tenGiuong: "Giường 101A", trangThai: "DaCoc"  },
       // P102 - 2 giường
       { maGiuong: "G102A", maPhong: "P102", tenGiuong: "Giường 102A", trangThai: "DaThue" },
       { maGiuong: "G102B", maPhong: "P102", tenGiuong: "Giường 102B", trangThai: "DaThue" },
@@ -77,7 +77,7 @@ async function main() {
       { maGiuong: "G103C", maPhong: "P103", tenGiuong: "Giường 103C", trangThai: "DaThue" },
       { maGiuong: "G103D", maPhong: "P103", tenGiuong: "Giường 103D", trangThai: "Trong"  },
       // P104 - 4 giường
-      { maGiuong: "G104A", maPhong: "P104", tenGiuong: "Giường 104A", trangThai: "Trong"  },
+      { maGiuong: "G104A", maPhong: "P104", tenGiuong: "Giường 104A", trangThai: "DaCoc"  },
       { maGiuong: "G104B", maPhong: "P104", tenGiuong: "Giường 104B", trangThai: "Trong"  },
       { maGiuong: "G104C", maPhong: "P104", tenGiuong: "Giường 104C", trangThai: "Trong"  },
       { maGiuong: "G104D", maPhong: "P104", tenGiuong: "Giường 104D", trangThai: "Trong"  },
@@ -106,6 +106,7 @@ async function main() {
       { maKH: "KH006", hoTen: "Đặng Minh Khoa",    gioiTinh: "Nam", ngaySinh: new Date("2001-03-18"), cccd: "079201006789", soDienThoai: "0926789012", email: "khoa@gmail.com",  quocTich: "Việt Nam", trangThai: 1 },
       { maKH: "KH007", hoTen: "Vũ Thị Hoa",        gioiTinh: "Nu",  ngaySinh: new Date("2003-09-30"), cccd: "079203007890", soDienThoai: "0937890123", email: "hoa@gmail.com",   quocTich: "Việt Nam", trangThai: 1 },
       { maKH: "KH008", hoTen: "Bùi Văn Long",      gioiTinh: "Nam", ngaySinh: new Date("2000-07-11"), cccd: "079200008901", soDienThoai: "0948901234", email: "long@gmail.com",  quocTich: "Việt Nam", trangThai: 1 },
+      { maKH: "KH009", hoTen: "Test Email User",   gioiTinh: "Nam", ngaySinh: new Date("2001-05-15"), cccd: "079201009999", soDienThoai: "0999999999", email: "obezet12@gmail.com", quocTich: "Việt Nam", trangThai: 1 },
     ],
     skipDuplicates: true,
   });
@@ -185,11 +186,23 @@ async function main() {
   await prisma.phieuCoc.createMany({
     data: [
       // KH001 cọc 2 giường P102 (phòng đôi, 2.5tr/giường → cọc = 2tr * 2 tháng * 2 giường)
-      { maPC: "PC001", maKH: "KH001", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-15T10:00:00"), tienCoc: 10000000, trangThai: "DaThanhToan", hanThanhToan: new Date("2025-11-16T10:00:00") },
+      { maPC: "PC001", maKH: "KH001", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-15T10:00:00"), tienCoc: 10000000, trangThai: "DaDuyet", hanThanhToan: new Date("2025-11-16T10:00:00") },
       // KH002 cọc 1 giường P103
-      { maPC: "PC002", maKH: "KH002", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-18T14:00:00"), tienCoc: 3600000,  trangThai: "DaThanhToan", hanThanhToan: new Date("2025-11-19T14:00:00") },
+      { maPC: "PC002", maKH: "KH002", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2025-11-18T14:00:00"), tienCoc: 3600000,  trangThai: "DaDuyet", hanThanhToan: new Date("2025-11-19T14:00:00") },
       // KH007 + KH008 cọc P201 (2 giường, 2.8tr/giường)
-      { maPC: "PC003", maKH: "KH007", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2025-12-20T09:00:00"), tienCoc: 11200000, trangThai: "DaThanhToan", hanThanhToan: new Date("2025-12-21T09:00:00") },
+      { maPC: "PC003", maKH: "KH007", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2025-12-20T09:00:00"), tienCoc: 11200000, trangThai: "DaDuyet", hanThanhToan: new Date("2025-12-21T09:00:00") },
+      // KH006 cọc 1 giường P104 - Chờ duyệt
+      { maPC: "PC004", maKH: "KH006", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-03-10T08:00:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-03-12T08:00:00") },
+      // KH004 cọc 3 giường P202 - Đã duyệt
+      { maPC: "PC006", maKH: "KH004", maNV: "NV005", maCN: "CN002", ngayCoc: new Date("2026-02-28T14:00:00"), tienCoc: 13500000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-03-02T14:00:00") },
+      // KH005 cọc phòng P101 (phòng đơn, 1 giường) - Đã duyệt
+      { maPC: "PC007", maKH: "KH005", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-02-15T09:00:00"), tienCoc: 7000000, trangThai: "DaDuyet", hanThanhToan: new Date("2026-02-17T09:00:00") },
+      // KH008 cọc phòng P104 (phòng rỗng, 4 giường) - Đã hủy (Quá hạn)
+      { maPC: "PC008", maKH: "KH008", maNV: "NV002", maCN: "CN001", maPhong: "P104", ngayCoc: new Date("2026-01-20T11:00:00"), tienCoc: 7200000, trangThai: "DaHuy", hanThanhToan: new Date("2026-01-22T11:00:00") },
+      // KH009 (Test Email User) cọc phòng P101 - Chờ duyệt
+      { maPC: "PC009", maKH: "KH009", maNV: "NV002", maCN: "CN001", maPhong: "P101", ngayCoc: new Date("2026-04-15T10:00:00"), tienCoc: 7000000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-04-17T10:00:00") },
+      // KH001 cọc 1 giường P102 - Chờ duyệt (Test auto-cancel: created 00:10 on 15/4, should expire 24h later)
+      { maPC: "PC010", maKH: "KH001", maNV: "NV002", maCN: "CN001", ngayCoc: new Date("2026-04-15T00:10:00"), tienCoc: 3600000, trangThai: "ChoDuyet", hanThanhToan: new Date("2026-04-17T00:10:00") },
     ],
     skipDuplicates: true,
   });
@@ -201,6 +214,18 @@ async function main() {
       { maPC: "PC002", maGiuong: "G103A" },
       { maPC: "PC003", maGiuong: "G201A" },
       { maPC: "PC003", maGiuong: "G201B" },
+      // PC004 - KH006 cọc 1 giường G104A
+      { maPC: "PC004", maGiuong: "G104A" },
+      // PC005 - cọc phòng (không có chiTietPhieuCoc)
+      // PC006 - KH004 cọc 3 giường P202
+      { maPC: "PC006", maGiuong: "G202A" },
+      { maPC: "PC006", maGiuong: "G202B" },
+      { maPC: "PC006", maGiuong: "G202C" },
+      // PC007 - cọc phòng (không có chiTietPhieuCoc)
+      // PC008 - cọc phòng (không có chiTietPhieuCoc)
+      // PC009 - cọc phòng (không có chiTietPhieuCoc)
+      // PC010 - KH001 cọc 1 giường G102B (for auto-cancel testing)
+      { maPC: "PC010", maGiuong: "G102B" },
     ],
     skipDuplicates: true,
   });

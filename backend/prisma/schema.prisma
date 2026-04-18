@@ -103,7 +103,12 @@ model Phong {
   chiNhanh  ChiNhanh  @relation(fields: [maCN], references: [maCN])
   loaiPhong LoaiPhong @relation(fields: [maLoai], references: [maLoai])
   giuong    Giuong[]
+  lichHen   LichHen[]
+  phieuCoc  PhieuCoc[]
 
+  @@index([maCN])
+  @@index([trangThai])
+  @@index([maCN, trangThai])
   @@map("Phong")
 }
 
@@ -117,7 +122,11 @@ model Giuong {
   chiTietPhieuCoc    ChiTietPhieuCoc[]
   thanhVien          ThanhVien[]
   chiTietBanGiao     ChiTietBanGiao[]
+  lichHen            LichHen[]
 
+  @@index([maPhong])
+  @@index([trangThai])
+  @@index([maPhong, trangThai])
   @@map("Giuong")
 }
 
@@ -142,18 +151,28 @@ model YeuCauThue {
   nhanVien  NhanVien  @relation(fields: [maNV], references: [maNV])
   lichHen   LichHen[]
 
+  @@index([trangThai])
+  @@index([maKH])
+  @@index([maNV])
   @@map("YeuCauThue")
 }
 
 model LichHen {
   maLH      String   @id @db.VarChar(10)
   maYCT     String   @db.VarChar(10)
+  maPhong   String?  @db.VarChar(10)
+  maGiuong  String?  @db.VarChar(10)
   ngayHen   DateTime @db.Date
   gioHen    String   @db.VarChar(10)
   trangThai String   @db.VarChar(20)  // "ChoXacNhan" | "DaHen" | "HoanThanh" | "Huy"
   ghiChu    String?  @db.Text
 
   yeuCauThue YeuCauThue @relation(fields: [maYCT], references: [maYCT])
+  phong      Phong?     @relation(fields: [maPhong], references: [maPhong])
+  giuong     Giuong?    @relation(fields: [maGiuong], references: [maGiuong])
+
+  @@index([maPhong])
+  @@index([maGiuong])
 
   @@map("LichHen")
 }
@@ -165,18 +184,26 @@ model PhieuCoc {
   maKH          String   @db.VarChar(10)
   maNV          String   @db.VarChar(10)
   maCN          String   @db.VarChar(10)
-  maPhong       String?  @db.VarChar(10)   // legacy column, kept to avoid data loss during migration
+  maPhong       String?  @db.VarChar(10)  // For room deposits (nullable)
   ngayCoc       DateTime @db.Timestamp()
   tienCoc       Decimal  @db.Decimal(12, 0)
-  trangThai     String   @db.VarChar(20)   // "ChoThanhToan" | "DaThanhToan" | "TuDongHuy" | "HuyThuCong"
+  trangThai     String   @db.VarChar(20)   // "ChoDuyet" | "DaDuyet" | "DaHuy"
   hanThanhToan  DateTime @db.Timestamp()
 
   khachHang        KhachHang         @relation(fields: [maKH], references: [maKH])
   nhanVien         NhanVien          @relation(fields: [maNV], references: [maNV])
   chiNhanh         ChiNhanh          @relation(fields: [maCN], references: [maCN])
+  phong            Phong?            @relation(fields: [maPhong], references: [maPhong])
   chiTietPhieuCoc  ChiTietPhieuCoc[]
   hopDong          HopDong[]
 
+  @@index([trangThai])
+  @@index([ngayCoc])
+  @@index([trangThai, ngayCoc])
+  @@index([maPhong])
+  @@index([maKH])
+  @@index([maCN])
+  @@index([maNV])
   @@map("PhieuCoc")
 }
 
@@ -188,6 +215,7 @@ model ChiTietPhieuCoc {
   giuong   Giuong   @relation(fields: [maGiuong], references: [maGiuong])
 
   @@id([maPC, maGiuong])
+  @@index([maGiuong])
   @@map("ChiTietPhieuCoc")
 }
 
@@ -202,7 +230,6 @@ model HopDong {
   ngayKetThuc  DateTime @db.Date
   kyThanhToan  Int                          // số tháng/kỳ
   trangThai    String   @db.VarChar(20)     // "DangHieuLuc" | "HetHan" | "DaThanhLy"
-  anhHD        String?  @db.Text    
 
   phieuCoc         PhieuCoc         @relation(fields: [maPC], references: [maPC])
   nhanVien         NhanVien         @relation(fields: [maNV], references: [maNV])
@@ -363,16 +390,4 @@ model ThanhLyHD {
   nhanVien        NhanVien        @relation(fields: [maNV], references: [maNV])
 
   @@map("ThanhLyHD")
-}
-
-// ─── CHÍNH SÁCH ─────────────────────────────────────────────────────────────
-
-model ChinhSach {
-  maCS        String   @id @db.VarChar(10)
-  tieuDe      String   @db.VarChar(150)
-  noiDung     String   @db.Text
-  trangThai   Int      @default(1)
-  ngayCapNhat DateTime @updatedAt @db.Timestamp()
-
-  @@map("ChinhSach")
 }
