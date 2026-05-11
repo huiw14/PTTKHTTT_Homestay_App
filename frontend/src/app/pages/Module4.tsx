@@ -415,7 +415,14 @@ export function ContractCreate() {
     const fetchEligibleDeposits = async () => {
       setLoadingDeposits(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/contracts/eligible-deposits`);
+        const userId = localStorage.getItem('userId') || 'NV001';
+        const userRole = localStorage.getItem('userRole') || 'sale';
+        const response = await fetch(`${API_BASE_URL}/api/contracts/eligible-deposits`, {
+          headers: {
+            'x-user-id': userId,
+            'x-user-role': userRole,
+          },
+        });
         if (!response.ok) {
           const errorBody = await response.json().catch(() => ({}));
           throw new Error(errorBody.message || "Không thể tải dữ liệu phiếu cọc.");
@@ -493,19 +500,30 @@ export function ContractCreate() {
     try {
       setSubmitting(true);
 
+      const userId = localStorage.getItem('userId') || 'NV001';
+      const userRole = localStorage.getItem('userRole') || 'sale';
+      
+      // Create FormData to handle file upload
+      const formData = new FormData();
+      formData.append('maPC', form.depositId);
+      formData.append('maNV', selectedDeposit.maNV);
+      formData.append('ngayKy', form.signDate);
+      formData.append('ngayBatDau', form.startDate);
+      formData.append('kyThanhToan', form.cycleMonths.toString());
+      
+      // Append file if it exists
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput?.files?.[0]) {
+        formData.append('anhHD', fileInput.files[0]);
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/contracts`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          'x-user-id': userId,
+          'x-user-role': userRole,
         },
-        body: JSON.stringify({
-          maPC: form.depositId,
-          maNV: selectedDeposit.maNV,
-          ngayKy: form.signDate,
-          ngayBatDau: form.startDate,
-          kyThanhToan: form.cycleMonths,
-          anhHD: form.signedFileName,
-        }),
+        body: formData,
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -523,6 +541,11 @@ export function ContractCreate() {
         members: 1,
         signedFileName: "",
       });
+
+      // Reset file input
+      if (fileInput) {
+        fileInput.value = "";
+      }
 
       setAvailableDeposits((current) => current.filter((deposit) => deposit.maPC !== created.depositId));
       toast.success("Tạo hợp đồng thành công.");
@@ -737,7 +760,14 @@ export function ContractManage() {
     const fetchContracts = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/contracts`);
+        const userId = localStorage.getItem('userId') || 'NV001';
+        const userRole = localStorage.getItem('userRole') || 'sale';
+        const response = await fetch(`${API_BASE_URL}/api/contracts`, {
+          headers: {
+            'x-user-id': userId,
+            'x-user-role': userRole,
+          },
+        });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           throw new Error(payload.message || "Không thể tải danh sách hợp đồng.");

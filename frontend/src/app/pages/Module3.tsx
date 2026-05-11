@@ -39,11 +39,18 @@ export function DepositCreate() {
     const fetchCustomers = async () => {
       try {
         setLoadingCustomers(true);
-        // For now, we'll use a simple API call - you may need to create an endpoint for this
-        // Since customers endpoint may not exist, let's handle gracefully
         const API_BASE = 'http://localhost:5000/api';
+        
+        // Get auth headers from localStorage or use defaults
+        const userId = localStorage.getItem('userId') || 'NV001';
+        const userRole = localStorage.getItem('userRole') || 'sale';
+        
         const response = await fetch(`${API_BASE}/customers`, {
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-user-id': userId,
+            'x-user-role': userRole,
+          },
         });
         
         if (response.ok) {
@@ -51,6 +58,7 @@ export function DepositCreate() {
           setCustomers(data.data || []);
         } else {
           // Fallback - customers endpoint may not exist yet
+          console.error('Failed to fetch customers:', response.statusText);
           setCustomers([]);
         }
       } catch (error) {

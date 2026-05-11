@@ -128,7 +128,144 @@ export const createCustomer = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/customers/:id - Lấy chi tiết khách hàng
+ */
+export const getCustomerDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const customer = await prisma.khachHang.findUnique({
+      where: { maKH: id },
+      include: {
+        phieuCoc: true,
+        thanhVien: true,
+      },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Khách hàng không tồn tại',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: customer,
+    });
+  } catch (error) {
+    console.error('❌ Error in getCustomerDetail:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi lấy chi tiết khách hàng',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * PUT /api/customers/:id - Cập nhật thông tin khách hàng
+ */
+export const updateCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hoTen, gioiTinh, ngaySinh, email, quocTich, trangThai } = req.body;
+
+    const customer = await prisma.khachHang.findUnique({
+      where: { maKH: id },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Khách hàng không tồn tại',
+      });
+    }
+
+    const updateData = {};
+    if (hoTen !== undefined) updateData.hoTen = hoTen.trim();
+    if (gioiTinh !== undefined) updateData.gioiTinh = gioiTinh;
+    if (ngaySinh !== undefined) updateData.ngaySinh = ngaySinh ? new Date(ngaySinh) : null;
+    if (email !== undefined) updateData.email = email?.trim() || null;
+    if (quocTich !== undefined) updateData.quocTich = quocTich;
+    if (trangThai !== undefined) updateData.trangThai = trangThai;
+
+    const updated = await prisma.khachHang.update({
+      where: { maKH: id },
+      data: updateData,
+    });
+
+    res.json({
+      success: true,
+      message: 'Cập nhật khách hàng thành công',
+      data: updated,
+    });
+  } catch (error) {
+    console.error('❌ Error in updateCustomer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi cập nhật khách hàng',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * DELETE /api/customers/:id - Xóa/vô hiệu hóa khách hàng
+ */
+export const deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const customer = await prisma.khachHang.findUnique({
+      where: { maKH: id },
+      include: {
+        phieuCoc: true,
+        yeuCauThue: true,
+      },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Khách hàng không tồn tại',
+      });
+    }
+
+    // Check if customer has active rentals
+    if (customer.phieuCoc.length > 0 || customer.yeuCauThue.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể xóa khách hàng có yêu cầu thuê hoặc phiếu cọc đang hoạt động',
+      });
+    }
+
+    // Soft delete by marking trangThai = 0
+    const deleted = await prisma.khachHang.update({
+      where: { maKH: id },
+      data: { trangThai: 0 },
+    });
+
+    res.json({
+      success: true,
+      message: 'Xóa khách hàng thành công',
+      data: deleted,
+    });
+  } catch (error) {
+    console.error('❌ Error in deleteCustomer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi xóa khách hàng',
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getCustomers,
+  getCustomerDetail,
   createCustomer,
+  updateCustomer,
+  deleteCustomer,
 };
