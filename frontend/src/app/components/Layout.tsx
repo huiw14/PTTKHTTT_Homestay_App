@@ -10,7 +10,10 @@ import {
   Bell,
   UserCircle,
   ShieldCheck,
-  DoorOpen
+  DoorOpen,
+  ClipboardCheck,
+  Calculator,
+  FileCheck
 } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -51,7 +54,9 @@ const MENU_GROUPS = [
       { name: "Thu tiền kỳ đầu", path: "/contracts/receipts", icon: CreditCard },
       { name: "Bàn giao phòng", path: "/contracts/handover", icon: DoorOpen },
       { name: "Lịch trả phòng", path: "/checkout/schedules", icon: LogOut },
-      { name: "Thanh lý & Đối soát", path: "/checkout/slips", icon: LogOut },
+      { name: "Kiểm tra hiện trạng", path: "/checkout/inspection", icon: ClipboardCheck },
+      { name: "Đối soát tài chính", path: "/checkout/slips", icon: Calculator },
+      { name: "Thanh lý hợp đồng", path: "/checkout/liquidation", icon: FileCheck },
     ]
   }
 ];
