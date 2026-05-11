@@ -192,6 +192,223 @@ export const MOCK_CHECKOUT_SLIPS = [
   { id: "PC01", contractId: "HD001", depositRefund: 10000000, deduction: 500000, totalPayout: 9500000, status: "Chờ đối soát" },
 ];
 
+export const MOCK_CHECKOUT_REQUESTS = [
+  {
+    id: "OUT001",
+    contractId: "CT001",
+    customerName: "Nguyễn Việt Hoàng",
+    roomName: "R101",
+    bedCount: 2,
+    depositAmount: 6000000,
+    startDate: "2026-01-01",
+    contractEndDate: "2026-12-31",
+    expectedCheckoutDate: "2026-05-20",
+    reason: "Chuyển chỗ làm",
+    stayMonths: 5,
+    status: "Chờ duyệt",
+    electricStart: 120,
+    waterStart: 5,
+    electricEnd: 280,
+    waterEnd: 12,
+    unpaidRent: 0,
+    unpaidService: 150000,
+    violationFee: 0,
+    refundRate: 100, // %
+    damageItems: [],
+    inspectionChecklist: {
+      keyReturned: false,
+      roomClean: false,
+      assetsIntact: false,
+      servicesPaid: false
+    }
+  },
+  {
+    id: "OUT002",
+    contractId: "CT002",
+    customerName: "Vũ Kiều Oanh",
+    roomName: "R102",
+    bedCount: 2,
+    depositAmount: 7200000,
+    startDate: "2025-10-01",
+    contractEndDate: "2026-10-01",
+    expectedCheckoutDate: "2026-10-01",
+    reason: "Hết hạn hợp đồng",
+    stayMonths: 12,
+    status: "Đã xác nhận",
+    electricStart: 100,
+    waterStart: 3,
+    electricEnd: 450,
+    waterEnd: 15,
+    unpaidRent: 0,
+    unpaidService: 200000,
+    violationFee: 0,
+    refundRate: 100, // %
+    damageItems: [
+      { description: "Thất lạc chìa khóa", amount: 50000 },
+      { description: "Rách đệm giường số 2", amount: 300000 }
+    ],
+    inspectionChecklist: {
+      keyReturned: true,
+      roomClean: true,
+      assetsIntact: false,
+      servicesPaid: false
+    }
+  },
+  {
+    id: "OUT003",
+    contractId: "CT003",
+    customerName: "Nguyễn Tiến Khang",
+    roomName: "R103",
+    bedCount: 1,
+    depositAmount: 3000000,
+    startDate: "2026-03-01",
+    contractEndDate: "2026-09-01",
+    expectedCheckoutDate: "2026-04-15",
+    reason: "Hủy thuê sớm",
+    stayMonths: 1,
+    status: "Đang kiểm tra",
+    electricStart: 80,
+    waterStart: 2,
+    electricEnd: 150,
+    waterEnd: 8,
+    unpaidRent: 1800000,
+    unpaidService: 100000,
+    violationFee: 500000,
+    refundRate: 50, // % do hủy sớm
+    damageItems: [
+      { description: "Hư hỏng tủ đầu giường", amount: 150000 }
+    ],
+    inspectionChecklist: {
+      keyReturned: true,
+      roomClean: false,
+      assetsIntact: false,
+      servicesPaid: false
+    }
+  },
+  // ✅ TEST UC25: Thanh lý - Hoàn lại (Hợp đồng hết hạn, 70% refund)
+  {
+    id: "OUT004",
+    contractId: "CT004",
+    customerName: "Trần Minh Tuấn",
+    roomName: "R104",
+    bedCount: 1,
+    depositAmount: 5000000,
+    startDate: "2025-11-01",
+    contractEndDate: "2026-05-01",
+    expectedCheckoutDate: "2026-05-01",
+    reason: "Hết hạn hợp đồng",
+    stayMonths: 6,
+    status: "Đã đối soát",
+    electricStart: 150,
+    waterStart: 10,
+    electricEnd: 450,
+    waterEnd: 35,
+    unpaidRent: 0,
+    unpaidService: 300000,
+    violationFee: 0,
+    refundRate: 70, // % - Chưa hết hạn, lưu trú ≥ 6 tháng
+    damageItems: [
+      { description: "Rửa sạch góc bẩn", amount: 0 }
+    ],
+    inspectionChecklist: {
+      keyReturned: true,
+      roomClean: true,
+      assetsIntact: true,
+      servicesPaid: true
+    },
+    settlementData: {
+      depositAmount: 5000000,
+      refundRate: 70,
+      basicRefund: 3500000,
+      totalDeduction: 1342500,
+      finalResult: 2157500,
+      resultText: "Hoàn lại"
+    }
+  },
+  // ✅ TEST UC25: Thanh lý - Thu thêm (Hợp đồng chưa hết hạn, 50% refund, nợ tiền)
+  {
+    id: "OUT005",
+    contractId: "CT005",
+    customerName: "Lê Hoàng Phương",
+    roomName: "R105",
+    bedCount: 2,
+    depositAmount: 4500000,
+    startDate: "2026-01-15",
+    contractEndDate: "2026-12-15",
+    expectedCheckoutDate: "2026-05-10",
+    reason: "Hủy hợp đồng sớm",
+    stayMonths: 4,
+    status: "Đã đối soát",
+    electricStart: 200,
+    waterStart: 15,
+    electricEnd: 620,
+    waterEnd: 45,
+    unpaidRent: 900000,
+    unpaidService: 250000,
+    violationFee: 500000,
+    refundRate: 50, // % - Hủy sớm < 6 tháng
+    damageItems: [
+      { description: "Bong sơn tường", amount: 200000 },
+      { description: "Hỏng khóa cửa", amount: 400000 }
+    ],
+    inspectionChecklist: {
+      keyReturned: true,
+      roomClean: true,
+      assetsIntact: false,
+      servicesPaid: false
+    },
+    settlementData: {
+      depositAmount: 4500000,
+      refundRate: 50,
+      basicRefund: 2250000,
+      totalDeduction: 3695000,
+      finalResult: -1445000,
+      resultText: "Thu thêm"
+    }
+  },
+  // ✅ TEST UC25: Thanh lý - Không phát sinh (Hoàn lại = Khấu trừ)
+  {
+    id: "OUT006",
+    contractId: "CT006",
+    customerName: "Đặng Thị Hương Giang",
+    roomName: "R106",
+    bedCount: 1,
+    depositAmount: 2500000,
+    startDate: "2025-12-01",
+    contractEndDate: "2026-06-01",
+    expectedCheckoutDate: "2026-06-01",
+    reason: "Hết hạn hợp đồng",
+    stayMonths: 6,
+    status: "Đã đối soát",
+    electricStart: 300,
+    waterStart: 20,
+    electricEnd: 500,
+    waterEnd: 35,
+    unpaidRent: 0,
+    unpaidService: 200000,
+    violationFee: 0,
+    refundRate: 100, // % - Hợp đồng hết hạn
+    basicRefund: 2500000,
+    totalDeduction: 2500000,
+    finalResult: 0,
+    damageItems: [],
+    inspectionChecklist: {
+      keyReturned: true,
+      roomClean: true,
+      assetsIntact: true,
+      servicesPaid: true
+    },
+    settlementData: {
+      depositAmount: 2500000,
+      refundRate: 100,
+      basicRefund: 2500000,
+      totalDeduction: 2500000,
+      finalResult: 0,
+      resultText: "Không phát sinh"
+    }
+  }
+];
+
 // ==========================================
 // EXPORTS ALIASES (without MOCK_ prefix for easier imports)
 // ==========================================
@@ -212,3 +429,4 @@ export const members = MOCK_MEMBERS;
 export const receipts = MOCK_RECEIPTS;
 export const checkoutSchedules = MOCK_CHECKOUT_SCHEDULES;
 export const checkoutSlips = MOCK_CHECKOUT_SLIPS;
+export const checkoutRequests = MOCK_CHECKOUT_REQUESTS;

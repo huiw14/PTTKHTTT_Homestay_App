@@ -131,3 +131,4 @@ TableCell.displayName = "TableCell"
 
 export { Button, Input, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell }
 export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogTrigger, DialogPortal, DialogOverlay, DialogFooter } from "./ui/dialog"
+export { Textarea } from "./ui/textarea"
