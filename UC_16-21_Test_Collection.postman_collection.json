@@ -1,0 +1,844 @@
+{
+  "info": {
+    "name": "UC 16-21 Complete Workflow",
+    "description": "Complete end-to-end testing for Use Cases 16-21: Deposit, Contract, Receipt, Handover, Checkout",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth Setup",
+      "item": [
+        {
+          "name": "Login - Sale Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sale@homestay.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UC-16: Deposit Approval",
+      "item": [
+        {
+          "name": "Get Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/customers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "customers"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Rooms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/deposits/available-rooms",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits", "available-rooms"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Beds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/deposits/available-beds?maPhong=P001",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits", "available-beds"],
+              "query": [
+                {
+                  "key": "maPhong",
+                  "value": "P001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maKH\": \"KH001\",\n  \"maPhong\": \"P001\",\n  \"maGiuong\": \"G001\",\n  \"soTienCoc\": 5000000,\n  \"ngayLapPhieu\": \"2026-05-11\",\n  \"ghiChu\": \"Deposit for rent\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/deposits",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits"]
+            }
+          }
+        },
+        {
+          "name": "Get Deposits (ChoDuyet)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV002"
+              },
+              {
+                "key": "x-user-role",
+                "value": "quanly"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/deposits",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits"]
+            }
+          }
+        },
+        {
+          "name": "Approve Deposit (Manager)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV002"
+              },
+              {
+                "key": "x-user-role",
+                "value": "quanly"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trangThai\": \"DaThanhToan\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/deposits/{{depositId}}/approve",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits", "{{depositId}}", "approve"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UC-17: Create Contract",
+      "item": [
+        {
+          "name": "Get Eligible Deposits (DaThanhToan)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/contracts/eligible-deposits",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "contracts", "eligible-deposits"]
+            }
+          }
+        },
+        {
+          "name": "Create Contract (with file upload)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "maPC",
+                  "value": "{{depositId}}"
+                },
+                {
+                  "key": "ngayBatDau",
+                  "value": "2026-05-15"
+                },
+                {
+                  "key": "thoiHanHD",
+                  "value": "12"
+                },
+                {
+                  "key": "ghiChu",
+                  "value": "3-month rental contract"
+                },
+                {
+                  "key": "anhHD",
+                  "type": "file",
+                  "src": "/path/to/contract.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/contracts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "contracts"]
+            }
+          }
+        },
+        {
+          "name": "Get Contracts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/contracts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "contracts"]
+            }
+          }
+        },
+        {
+          "name": "Get Contract Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/contracts/{{contractId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "contracts", "{{contractId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UC-18: Create Receipt",
+      "item": [
+        {
+          "name": "Get Receipts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV003"
+              },
+              {
+                "key": "x-user-role",
+                "value": "ketoan"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/receipts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "receipts"]
+            }
+          }
+        },
+        {
+          "name": "Create Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV003"
+              },
+              {
+                "key": "x-user-role",
+                "value": "ketoan"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maHD\": \"{{contractId}}\",\n  \"soTien\": 5000000,\n  \"ngayLapPhieu\": \"2026-05-15\",\n  \"hinhThucTT\": \"CK\",\n  \"ghiChu\": \"Payment receipt\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/services/receipts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "receipts"]
+            }
+          }
+        },
+        {
+          "name": "Get Receipt Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV003"
+              },
+              {
+                "key": "x-user-role",
+                "value": "ketoan"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/receipts/{{receiptId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "receipts", "{{receiptId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UC-19: Confirm Receipt",
+      "item": [
+        {
+          "name": "Confirm Receipt (Collected)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV003"
+              },
+              {
+                "key": "x-user-role",
+                "value": "ketoan"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/services/receipts/{{receiptId}}/confirm",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "receipts", "{{receiptId}}", "confirm"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UC-20: Create Handover",
+      "item": [
+        {
+          "name": "Get Handovers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/handovers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "handovers"]
+            }
+          }
+        },
+        {
+          "name": "Create Handover (Asset Checklist)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maHD\": \"{{contractId}}\",\n  \"ngayBanGiao\": \"2026-05-15\",\n  \"chiTietTaiSan\": [\n    {\n      \"ten\": \"Giường\",\n      \"soLuong\": 1,\n      \"trangThai\": \"Tốt\"\n    },\n    {\n      \"ten\": \"Tủ\",\n      \"soLuong\": 1,\n      \"trangThai\": \"Tốt\"\n    },\n    {\n      \"ten\": \"Quạt\",\n      \"soLuong\": 1,\n      \"trangThai\": \"Tốt\"\n    }\n  ],\n  \"ghiChu\": \"All assets in good condition\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/services/handovers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "handovers"]
+            }
+          }
+        },
+        {
+          "name": "Get Handover Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/handovers/{{handoverId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "handovers", "{{handoverId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UC-21: Create Checkout",
+      "item": [
+        {
+          "name": "Get Checkouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/checkouts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "checkouts"]
+            }
+          }
+        },
+        {
+          "name": "Create Checkout (Final Inspection)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maBBBG\": \"{{handoverId}}\",\n  \"ngayTraPhong\": \"2026-08-15\",\n  \"chiTietTaiSan\": [\n    {\n      \"ten\": \"Giường\",\n      \"soLuong\": 1,\n      \"trangThai\": \"Tốt\",\n      \"haoMon\": 0\n    },\n    {\n      \"ten\": \"Tủ\",\n      \"soLuong\": 1,\n      \"trangThai\": \"Bình thường\",\n      \"haoMon\": 500000\n    },\n    {\n      \"ten\": \"Quạt\",\n      \"soLuong\": 1,\n      \"trangThai\": \"Tốt\",\n      \"haoMon\": 0\n    }\n  ],\n  \"tienKhauTru\": 500000,\n  \"ghiChu\": \"Cabinet has minor damage\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/services/checkouts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "checkouts"]
+            }
+          }
+        },
+        {
+          "name": "Get Checkout Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/checkouts/{{checkoutId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "checkouts", "{{checkoutId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "RBAC Testing - Unauthorized Access",
+      "item": [
+        {
+          "name": "Sale tries to approve deposit (Should fail)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trangThai\": \"DaThanhToan\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/deposits/{{depositId}}/approve",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits", "{{depositId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Ketoan tries to create receipt without quanly role (Should succeed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "NV003"
+              },
+              {
+                "key": "x-user-role",
+                "value": "ketoan"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maHD\": \"{{contractId}}\",\n  \"soTien\": 5000000,\n  \"ngayLapPhieu\": \"2026-05-15\",\n  \"hinhThucTT\": \"CK\",\n  \"ghiChu\": \"Payment receipt\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/services/receipts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "receipts"]
+            }
+          }
+        },
+        {
+          "name": "Admin tries to access employee list (Should succeed)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV999"
+              },
+              {
+                "key": "x-user-role",
+                "value": "admin"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/employees",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "employees"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verification Queries",
+      "item": [
+        {
+          "name": "Check Deposit Status Changed to DaThanhToan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV002"
+              },
+              {
+                "key": "x-user-role",
+                "value": "quanly"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/deposits/{{depositId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "deposits", "{{depositId}}"]
+            }
+          }
+        },
+        {
+          "name": "Check Contract Status is DangHieuLuc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/contracts/{{contractId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "contracts", "{{contractId}}"]
+            }
+          }
+        },
+        {
+          "name": "Check Receipt Status is Collected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV003"
+              },
+              {
+                "key": "x-user-role",
+                "value": "ketoan"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/services/receipts/{{receiptId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "services", "receipts", "{{receiptId}}"]
+            }
+          }
+        },
+        {
+          "name": "Check Room Status Changed to DangThue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/rooms",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "rooms"]
+            }
+          }
+        },
+        {
+          "name": "Check Contract Status Changed to HetHan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "NV001"
+              },
+              {
+                "key": "x-user-role",
+                "value": "sale"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/contracts/{{contractId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "contracts", "{{contractId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "depositId",
+      "value": "PC001",
+      "type": "string"
+    },
+    {
+      "key": "contractId",
+      "value": "HD001",
+      "type": "string"
+    },
+    {
+      "key": "receiptId",
+      "value": "PT001",
+      "type": "string"
+    },
+    {
+      "key": "handoverId",
+      "value": "BB001",
+      "type": "string"
+    },
+    {
+      "key": "checkoutId",
+      "value": "BTP001",
+      "type": "string"
+    }
+  ]
+}

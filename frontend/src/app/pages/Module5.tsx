@@ -2,6 +2,7 @@ import { useState, useEffect, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input } from "../components/ui";
 import { contracts, rooms, checkoutRequests } from "../data/mockData";
+import { checkoutWorkflowService } from "../services/salesService";
 import { toast } from "sonner";
 import { Plus, Edit2, LogOut, CheckCircle, FileX, Calculator, ArrowRight, DollarSign, AlertTriangle, Check, Eye } from "lucide-react";
 
@@ -33,12 +34,27 @@ type CheckoutRequestsUpdater = typeof sharedCheckoutRequests | ((prev: typeof sh
 const setCheckoutRequests = (updater: CheckoutRequestsUpdater) => {
   sharedCheckoutRequests = typeof updater === 'function' ? updater(sharedCheckoutRequests) : updater;
   notifyCheckoutRequests();
+  checkoutWorkflowService.saveWorkflows(sharedCheckoutRequests).catch(() => {
+    // ignore persistence failures for now
+  });
 };
 
 const useCheckoutRequests = () => {
   const store = useSyncExternalStore(subscribeCheckoutRequests, getCheckoutSnapshot);
   return [store, setCheckoutRequests] as const;
 };
+// Load persisted workflows from backend on module init
+checkoutWorkflowService.getWorkflows().then((response) => {
+  if (response && Array.isArray(response.data) && response.data.length > 0) {
+    sharedCheckoutRequests = response.data.map((item: any) => ({ ...item }));
+    notifyCheckoutRequests();
+  } else {
+    // persist initial mock as baseline
+    checkoutWorkflowService.saveWorkflows(sharedCheckoutRequests).catch(() => {});
+  }
+}).catch(() => {
+  // offline: keep using local mock data
+});
 
 // Ghi nhận Lịch trả phòng
 export function CheckoutSchedules() {
@@ -596,6 +612,10 @@ export function CheckoutSlips() {
   const slipRequests = requests.filter(req => ['Đã kiểm tra', 'Đã đối soát'].includes(req.status));
   const [selectedId, setSelectedId] = useState(slipRequests[0]?.id || '');
   const selectedRequest = requests.find(r => r.id === selectedId) || slipRequests[0];
+  // Guard early: avoid running calculations when no request selected
+  if (!selectedRequest) {
+    return <div>Không có dữ liệu yêu cầu trả phòng.</div>;
+  }
   
   const [otherDeductions, setOtherDeductions] = useState<Array<{description: string, amount: number}>>([]);
   const [deductionDescription, setDeductionDescription] = useState('');
@@ -742,9 +762,6 @@ export function CheckoutSlips() {
     toast.success('Đã lưu kết quả đối soát tài chính.');
   };
 
-  if (!selectedRequest) {
-    return <div>Không có dữ liệu yêu cầu trả phòng.</div>;
-  }
 
   return (
     <div className="space-y-6">

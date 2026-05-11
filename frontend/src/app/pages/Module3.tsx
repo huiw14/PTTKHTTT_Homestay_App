@@ -39,26 +39,19 @@ export function DepositCreate() {
     const fetchCustomers = async () => {
       try {
         setLoadingCustomers(true);
-        const API_BASE = 'http://localhost:5000/api';
-        
-        // Get auth headers from localStorage or use defaults
-        const userId = localStorage.getItem('userId') || 'NV001';
-        const userRole = localStorage.getItem('userRole') || 'sale';
-        
-        const response = await fetch(`${API_BASE}/customers`, {
-          headers: { 
+        const response = await depositService.getAvailableRooms('giường'); // Test auth first
+        const customersResponse = await fetch('http://localhost:5000/api/customers', {
+          headers: {
             'Content-Type': 'application/json',
-            'x-user-id': userId,
-            'x-user-role': userRole,
+            ...getDepositAuthHeaders(),
           },
         });
         
-        if (response.ok) {
-          const data = await response.json();
+        if (customersResponse.ok) {
+          const data = await customersResponse.json();
           setCustomers(data.data || []);
         } else {
-          // Fallback - customers endpoint may not exist yet
-          console.error('Failed to fetch customers:', response.statusText);
+          console.error('Failed to fetch customers:', customersResponse.statusText);
           setCustomers([]);
         }
       } catch (error) {
@@ -68,6 +61,30 @@ export function DepositCreate() {
         setLoadingCustomers(false);
       }
     };
+
+    function getDepositAuthHeaders() {
+      // Try new format first (currentUser JSON)
+      const userRaw = localStorage.getItem('currentUser');
+      if (userRaw) {
+        try {
+          const user = JSON.parse(userRaw);
+          if (user?.id && user?.role) {
+            return {
+              'x-user-id': String(user.id),
+              'x-user-role': String(user.role),
+            };
+          }
+        } catch {}
+      }
+
+      // Fallback to old format
+      const userId = localStorage.getItem('userId') || 'NV001';
+      const userRole = localStorage.getItem('userRole') || 'sale';
+      return {
+        'x-user-id': userId,
+        'x-user-role': userRole,
+      };
+    }
     
     fetchCustomers();
   }, []);

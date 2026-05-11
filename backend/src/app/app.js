@@ -13,10 +13,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // CORS
-app.use(cors({
-    origin: "http://localhost:5173",
-    credentials: true, // nếu bạn có cookie / auth
-}));
+// During local development allow all origins so Vite HMR and different dev hosts work.
+app.use(cors({ origin: true, credentials: true }));
 
 // Morgan
 app.use(morgan('dev'));
@@ -30,7 +28,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 route(app);
 
 // Initialize deposit auto-cancel cron job (runs every 5 minutes)
-startDepositAutoCancelCron();
+// Disabled temporarily due to Supabase connection issue
+// startDepositAutoCancelCron();
 
 // Error handling
 //app.use(notFound);

@@ -14,6 +14,35 @@ export interface DepositUpdatePayload {
   trangThai?: string;
 }
 
+// Helper to get auth headers from localStorage
+function getAuthHeaders() {
+  if (typeof window === 'undefined') return {};
+
+  // Try new format first (currentUser JSON)
+  const userRaw = window.localStorage.getItem('currentUser');
+  if (userRaw) {
+    try {
+      const user = JSON.parse(userRaw);
+      if (user?.id && user?.role) {
+        return {
+          'Content-Type': 'application/json',
+          'x-user-id': String(user.id),
+          'x-user-role': String(user.role),
+        };
+      }
+    } catch {}
+  }
+
+  // Fallback to old format (userId, userRole)
+  const userId = window.localStorage.getItem('userId') || 'NV001';
+  const userRole = window.localStorage.getItem('userRole') || 'sale';
+  return {
+    'Content-Type': 'application/json',
+    'x-user-id': userId,
+    'x-user-role': userRole,
+  };
+}
+
 export const depositService = {
   /**
    * GET /api/deposits - List all deposits with search & sort
@@ -36,7 +65,7 @@ export const depositService = {
 
     const response = await fetch(`${API_BASE}/deposits?${params}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -52,7 +81,7 @@ export const depositService = {
   async getDepositDetail(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -68,7 +97,7 @@ export const depositService = {
   async createDeposit(payload: DepositPayload) {
     const response = await fetch(`${API_BASE}/deposits`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -86,7 +115,7 @@ export const depositService = {
   async updateDeposit(id: string, payload: DepositUpdatePayload) {
     const response = await fetch(`${API_BASE}/deposits/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -104,7 +133,7 @@ export const depositService = {
   async deleteDeposit(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -121,7 +150,7 @@ export const depositService = {
   async sendPaymentRequest(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}/send-payment-request`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -138,7 +167,7 @@ export const depositService = {
   async approvePayment(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -158,7 +187,7 @@ export const depositService = {
 
     const response = await fetch(`${API_BASE}/deposits/available-rooms?${params}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -179,7 +208,7 @@ export const depositService = {
 
     const response = await fetch(`${API_BASE}/deposits/available-beds?${params}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -188,5 +217,5 @@ export const depositService = {
     }
 
     return response.json();
-  },
+  }
 };
