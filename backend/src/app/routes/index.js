@@ -7,6 +7,7 @@ import roomRoutes from './rooms.js';
 import branchRoutes from './branches.js';
 import employeeRoutes from './employees.js';
 import servicesRoutes from './services.js';
+import checkoutRoutes from './checkouts.js';
 import contractsRouter from '../../routes/contracts.routes.js';
 import authRouter from '../../routes/auth.routes.js';
 import catalogsRouter from '../../routes/catalogs.routes.js';
@@ -21,6 +22,7 @@ export default function routes(app) {
   app.use('/api/branches', branchRoutes);
   app.use('/api/employees', employeeRoutes);
   app.use('/api/services', servicesRoutes);
+  app.use('/api/checkouts', checkoutRoutes);
   app.use('/api/contracts', contractsRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/catalog', catalogsRouter);

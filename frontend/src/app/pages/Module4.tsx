@@ -43,6 +43,31 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 
+// Helper to get auth headers from localStorage
+function getAuthHeaders() {
+  // Try new format first (currentUser JSON)
+  const userRaw = localStorage.getItem('currentUser');
+  if (userRaw) {
+    try {
+      const user = JSON.parse(userRaw);
+      if (user?.id && user?.role) {
+        return {
+          'x-user-id': String(user.id),
+          'x-user-role': String(user.role),
+        };
+      }
+    } catch {}
+  }
+
+  // Fallback to old format
+  const userId = localStorage.getItem('userId') || 'NV001';
+  const userRole = localStorage.getItem('userRole') || 'sale';
+  return {
+    'x-user-id': userId,
+    'x-user-role': userRole,
+  };
+}
+
 type ApiContractRecord = {
   maHD: string;
   maPC: string;
@@ -419,8 +444,7 @@ export function ContractCreate() {
         const userRole = localStorage.getItem('userRole') || 'sale';
         const response = await fetch(`${API_BASE_URL}/api/contracts/eligible-deposits`, {
           headers: {
-            'x-user-id': userId,
-            'x-user-role': userRole,
+              ...getAuthHeaders(),
           },
         });
         if (!response.ok) {
@@ -520,8 +544,7 @@ export function ContractCreate() {
       const response = await fetch(`${API_BASE_URL}/api/contracts`, {
         method: "POST",
         headers: {
-          'x-user-id': userId,
-          'x-user-role': userRole,
+            ...getAuthHeaders(),
         },
         body: formData,
       });
@@ -764,8 +787,7 @@ export function ContractManage() {
         const userRole = localStorage.getItem('userRole') || 'sale';
         const response = await fetch(`${API_BASE_URL}/api/contracts`, {
           headers: {
-            'x-user-id': userId,
-            'x-user-role': userRole,
+              ...getAuthHeaders(),
           },
         });
         const payload = await response.json().catch(() => ({}));
