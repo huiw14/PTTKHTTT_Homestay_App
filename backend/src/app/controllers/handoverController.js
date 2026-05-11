@@ -421,6 +421,73 @@ export const createCheckout = async (req, res) => {
   }
 };
 
+/**
+ * PUT /api/checkouts/:id - Cập nhật biên bản trả phòng (đối soát/khấu trừ)
+ */
+export const updateCheckout = async (req, res) => {
+  try {
+    const { id } = req.params; // maBBTP
+    const { maNV, ngayTra, chiSoDienCuoi, chiSoNuocCuoi, trangThaiPhong, ghiChu, khauTru = [] } = req.body;
+
+    const existing = await prisma.bienBanTraPhong.findUnique({
+      where: { maBBTP: id },
+      include: { hopDong: { include: { phieuCoc: { include: { phong: true } } } } },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Biên bản trả phòng không tồn tại' });
+    }
+
+    if (maNV) {
+      const nv = await prisma.nhanVien.findUnique({ where: { maNV } });
+      if (!nv) return res.status(400).json({ success: false, message: 'Nhân viên không tồn tại' });
+    }
+
+    const updateData = {};
+    if (maNV) updateData.maNV = maNV;
+    if (ngayTra) updateData.ngayTra = new Date(ngayTra);
+    if (chiSoDienCuoi !== undefined) updateData.chiSoDienCuoi = parseFloat(chiSoDienCuoi);
+    if (chiSoNuocCuoi !== undefined) updateData.chiSoNuocCuoi = parseFloat(chiSoNuocCuoi);
+    if (trangThaiPhong) updateData.trangThaiPhong = trangThaiPhong;
+    if (ghiChu) updateData.ghiChu = ghiChu;
+
+    await prisma.bienBanTraPhong.update({ where: { maBBTP: id }, data: updateData });
+
+    // Replace khấu trừ entries only when valid maTS provided. Skip entries without maTS to avoid FK errors.
+    if (Array.isArray(khauTru) && khauTru.length > 0) {
+      await prisma.khauTru.deleteMany({ where: { maBBTP: id } }).catch(() => null);
+      const validDetails = khauTru
+        .filter((k) => k.maTS)
+        .map((item) => ({
+          maKT: `KT${Date.now()}${Math.random().toString(36).substr(2, 6)}`,
+          maBBTP: id,
+          maTS: item.maTS,
+          soLuong: item.soLuong || 1,
+          chiPhiKhauTru: parseInt(item.chiPhiKhauTru || 0),
+          ghiChu: item.ghiChu || null,
+        }));
+
+      if (validDetails.length > 0) {
+        await prisma.khauTru.createMany({ data: validDetails });
+      }
+    }
+
+    // Update contract status and room status similar to createCheckout
+    await prisma.hopDong.update({ where: { maHD: existing.maHD }, data: { trangThai: 'HetHan' } }).catch(() => null);
+
+    if (existing.hopDong?.phieuCoc?.phong && trangThaiPhong) {
+      const newStatus = trangThaiPhong === 'Tot' ? 'Trong' : 'BaoDuong';
+      await prisma.phong.update({ where: { maPhong: existing.hopDong.phieuCoc.phong.maPhong }, data: { trangThai: newStatus } }).catch(() => null);
+    }
+
+    const full = await prisma.bienBanTraPhong.findUnique({ where: { maBBTP: id }, include: { hopDong: true, nhanVien: true, khauTru: { include: { taiSan: true } } } });
+    res.json({ success: true, data: full });
+  } catch (error) {
+    console.error('❌ Error in updateCheckout:', error);
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật biên bản trả phòng', error: error.message });
+  }
+};
+
 export default {
   getHandovers,
   getHandoverDetail,
@@ -428,4 +495,5 @@ export default {
   getCheckouts,
   getCheckoutDetail,
   createCheckout,
+  updateCheckout,
 };

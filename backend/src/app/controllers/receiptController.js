@@ -114,7 +114,7 @@ export const getReceiptDetail = async (req, res) => {
  */
 export const createReceipt = async (req, res) => {
   try {
-    const { maHD, maNV, ngayThu, tongTien, loaiThu, chiTiet = [] } = req.body;
+    const { maHD, maNV, ngayThu, tongTien, loaiThu, ghiChu, chiTiet = [] } = req.body;
 
     if (!maHD || !maNV || !ngayThu || tongTien === undefined || !loaiThu) {
       return res.status(400).json({
@@ -154,6 +154,7 @@ export const createReceipt = async (req, res) => {
         ngayThu: receiptDate,
         tongTien: parseInt(tongTien),
         loaiThu,
+        ghiChu: ghiChu || null,
       },
     });
 

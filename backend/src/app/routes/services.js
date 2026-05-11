@@ -20,8 +20,9 @@ router.post('/handovers', requireRoles('sale', 'quanly', 'admin'), handoverContr
 
 // ─── BIÊN BẢN TRẢ PHÒNG (CHECKOUTS) ───────────────────────────────────────
 
-router.get('/checkouts', requireRoles('sale', 'quanly', 'admin'), handoverController.getCheckouts);
-router.get('/checkouts/:id', requireRoles('sale', 'quanly', 'admin'), handoverController.getCheckoutDetail);
-router.post('/checkouts', requireRoles('sale', 'quanly', 'admin'), handoverController.createCheckout);
+router.get('/checkouts', requireRoles('sale', 'ketoan', 'quanly', 'admin'), handoverController.getCheckouts);
+router.get('/checkouts/:id', requireRoles('sale', 'ketoan', 'quanly', 'admin'), handoverController.getCheckoutDetail);
+router.post('/checkouts', requireRoles('sale', 'ketoan', 'quanly', 'admin'), handoverController.createCheckout);
+router.put('/checkouts/:id', requireRoles('sale', 'ketoan', 'quanly', 'admin'), handoverController.updateCheckout);
 
 export default router;

@@ -1,10 +1,29 @@
 import { useState, useEffect, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, Button, Input } from "../components/ui";
-import { contracts, rooms, checkoutRequests } from "../data/mockData";
 import { checkoutWorkflowService } from "../services/salesService";
 import { toast } from "sonner";
 import { Plus, Edit2, LogOut, CheckCircle, FileX, Calculator, ArrowRight, DollarSign, AlertTriangle, Check, Eye } from "lucide-react";
+
+const API_BASE = 'http://localhost:5000/api';
+
+function getAuthHeaders() {
+  if (typeof window === 'undefined') return {};
+
+  const userRaw = window.localStorage.getItem('currentUser');
+  if (!userRaw) return {};
+
+  try {
+    const user = JSON.parse(userRaw);
+    if (!user?.id || !user?.role) return {};
+    return {
+      'x-user-id': String(user.id),
+      'x-user-role': String(user.role),
+    };
+  } catch {
+    return {};
+  }
+}
 
 const PageHeader = ({ title, description, btnText }: { title: string, description: string, btnText?: string }) => (
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -16,8 +35,7 @@ const PageHeader = ({ title, description, btnText }: { title: string, descriptio
   </div>
 );
 
-const initialCheckoutRequests = checkoutRequests.map(req => ({ ...req }));
-let sharedCheckoutRequests = initialCheckoutRequests;
+let sharedCheckoutRequests: any[] = [];
 const checkoutListeners = new Set<() => void>();
 
 const getCheckoutSnapshot = () => sharedCheckoutRequests;
@@ -43,23 +61,40 @@ const useCheckoutRequests = () => {
   const store = useSyncExternalStore(subscribeCheckoutRequests, getCheckoutSnapshot);
   return [store, setCheckoutRequests] as const;
 };
+
+type ContractOption = {
+  id: string;
+  customerName: string;
+  roomName: string;
+  bedCount: number;
+  startDate: string;
+  endDate: string;
+  depositAmount: number;
+  stayMonths: number;
+};
+
+const toDateString = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString().slice(0, 10);
+};
+
 // Load persisted workflows from backend on module init
 checkoutWorkflowService.getWorkflows().then((response) => {
   if (response && Array.isArray(response.data) && response.data.length > 0) {
     sharedCheckoutRequests = response.data.map((item: any) => ({ ...item }));
     notifyCheckoutRequests();
-  } else {
-    // persist initial mock as baseline
-    checkoutWorkflowService.saveWorkflows(sharedCheckoutRequests).catch(() => {});
   }
 }).catch(() => {
-  // offline: keep using local mock data
+  // offline: keep empty until API is available
 });
 
 // Ghi nhận Lịch trả phòng
 export function CheckoutSchedules() {
   const navigate = useNavigate();
   const [requests, setRequests] = useCheckoutRequests();
+  const [contractOptions, setContractOptions] = useState<ContractOption[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     contractId: '',
@@ -68,6 +103,74 @@ export function CheckoutSchedules() {
     expectedCheckoutDate: '',
     reason: ''
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadContracts = async () => {
+      try {
+        setLoadingContracts(true);
+        const response = await fetch(`${API_BASE}/contracts`, { headers: getAuthHeaders() });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.message || 'Không thể tải danh sách hợp đồng.');
+        }
+
+        const options = (payload.data || []).map((item: any) => ({
+          id: item.maHD,
+          customerName: item.khachHangName || 'Chưa xác định',
+          roomName: item.roomSummary || 'Chưa xác định',
+          bedCount: item.soThanhVien || 1,
+          startDate: toDateString(item.ngayBatDau),
+          endDate: toDateString(item.ngayKetThuc),
+          depositAmount: Number(item.tienCoc || 0),
+          stayMonths: Number(item.kyThanhToan || 0),
+        })) as ContractOption[];
+
+        if (!cancelled) {
+          setContractOptions(options);
+          setFormData((prev) => {
+            if (prev.contractId) return prev;
+            const first = options[0];
+            return first ? {
+              contractId: first.id,
+              customerName: first.customerName,
+              roomName: first.roomName,
+              expectedCheckoutDate: first.endDate,
+              reason: 'Khách hàng yêu cầu trả phòng',
+            } : prev;
+          });
+        }
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : 'Không thể tải hợp đồng.';
+        toast.error(message);
+      } finally {
+        if (!cancelled) setLoadingContracts(false);
+      }
+    };
+
+    loadContracts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!formData.contractId || contractOptions.length === 0) return;
+    const selected = contractOptions.find((item) => item.id === formData.contractId);
+    if (!selected) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      contractId: selected.id,
+      customerName: selected.customerName,
+      roomName: selected.roomName,
+      expectedCheckoutDate: selected.endDate,
+      reason: prev.reason || 'Khách hàng yêu cầu trả phòng',
+    }));
+  }, [contractOptions, formData.contractId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,15 +212,21 @@ export function CheckoutSchedules() {
       return;
     }
 
+    const selectedContract = contractOptions.find((item) => item.id === formData.contractId);
+    if (!selectedContract) {
+      toast.error('Hợp đồng đã chọn không tồn tại trong cơ sở dữ liệu.');
+      return;
+    }
+
     setRequests(prev => {
       const newRequest = {
         id: `OUT${String(prev.length + 1).padStart(3, '0')}`,
         ...formData,
-        bedCount: 1,
-        depositAmount: 3000000,
-        startDate: '2026-01-01',
-        contractEndDate: '2026-12-31',
-        stayMonths: 12,
+        bedCount: selectedContract.bedCount,
+        depositAmount: selectedContract.depositAmount,
+        startDate: selectedContract.startDate,
+        contractEndDate: selectedContract.endDate,
+        stayMonths: selectedContract.stayMonths,
         status: 'Chờ duyệt',
         electricStart: 100,
         waterStart: 5,
@@ -204,14 +313,34 @@ export function CheckoutSchedules() {
             <CardTitle className="text-lg">Tạo Yêu cầu Trả phòng Mới</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              Danh sách hợp đồng được tải trực tiếp từ backend. Chọn hợp đồng thật trong DB để tạo yêu cầu trả phòng.
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-semibold">Hợp đồng</label>
-                <Input 
-                  value={formData.contractId} 
-                  onChange={(e) => setFormData({...formData, contractId: e.target.value})}
-                  placeholder="VD: CT001"
-                />
+                <select
+                  className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={formData.contractId}
+                  onChange={(e) => {
+                    const selected = contractOptions.find((item) => item.id === e.target.value);
+                    setFormData({
+                      contractId: selected?.id || '',
+                      customerName: selected?.customerName || '',
+                      roomName: selected?.roomName || '',
+                      expectedCheckoutDate: selected?.endDate || '',
+                      reason: formData.reason || 'Khách hàng yêu cầu trả phòng',
+                    });
+                  }}
+                  disabled={loadingContracts}
+                >
+                  <option value="">-- Chọn hợp đồng thật từ DB --</option>
+                  {contractOptions.map((contract) => (
+                    <option key={contract.id} value={contract.id}>
+                      {contract.id} - {contract.customerName} - {contract.roomName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-sm font-semibold">Khách hàng</label>
@@ -261,6 +390,13 @@ export function CheckoutSchedules() {
           <Table>
             <TableHeader><TableRow><TableHead>Mã YC</TableHead><TableHead>Hợp đồng</TableHead><TableHead>Khách hàng</TableHead><TableHead>Phòng</TableHead><TableHead>Ngày báo out</TableHead><TableHead>Lý do</TableHead><TableHead>Trạng thái</TableHead><TableHead>Thao tác</TableHead></TableRow></TableHeader>
             <TableBody>
+              {!loadingContracts && requests.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-6 text-center text-slate-500">
+                    Chưa có yêu cầu trả phòng nào.
+                  </TableCell>
+                </TableRow>
+              )}
               {requests.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.id}</TableCell>
@@ -380,24 +516,52 @@ export function CheckoutInspection() {
     }
 
     const damageTotal = damageItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const updatedRequests = requests.map(req => {
-      if (req.id === selectedId) {
-        return {
-          ...req,
-          electricEnd,
-          waterEnd,
-          damageItems,
-          damageTotal,
-          inspectionNote: roomConditionNotes,
-          inspectionChecklist: checklist,
-          status: isChecklistComplete ? 'Đã kiểm tra' : 'Đang kiểm tra'
+    (async () => {
+      try {
+        const payload = {
+          maHD: selectedRequest.contractId,
+          maNV: getAuthHeaders()['x-user-id'] || window.localStorage.getItem('userId') || 'NV001',
+          ngayTra: selectedRequest.expectedCheckoutDate || new Date().toISOString().split('T')[0],
+          chiSoDienCuoi: electricEnd,
+          chiSoNuocCuoi: waterEnd,
+          trangThaiPhong: isChecklistComplete ? 'Tot' : 'HuHong',
+          ghiChu: roomConditionNotes || '',
+          khauTru: [],
         };
-      }
-      return req;
-    });
 
-    setRequests(updatedRequests);
-    toast.success('Đã lưu kết quả kiểm tra hiện trạng.');
+        const resp = await fetch(`${API_BASE}/services/checkouts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify(payload),
+        });
+        const result = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(result.message || 'Không thể tạo biên bản trả phòng');
+
+        const maBBTP = result.data?.maBBTP || null;
+
+        const updatedRequests = requests.map(req => {
+          if (req.id === selectedId) {
+            return {
+              ...req,
+              electricEnd,
+              waterEnd,
+              damageItems,
+              damageTotal,
+              inspectionNote: roomConditionNotes,
+              inspectionChecklist: checklist,
+              status: isChecklistComplete ? 'Đã kiểm tra' : 'Đang kiểm tra',
+              maBBTP,
+            };
+          }
+          return req;
+        });
+
+        setRequests(updatedRequests);
+        toast.success('Đã lưu kết quả kiểm tra hiện trạng và tạo biên bản trả phòng.');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Lỗi khi lưu kiểm tra hiện trạng.');
+      }
+    })();
   };
 
   if (!selectedRequest) {
@@ -730,36 +894,76 @@ export function CheckoutSlips() {
     const damageTotal = damageFee;
     const settlementType = finalResult > 0 ? 'Hoàn lại' : finalResult < 0 ? 'Thu thêm' : 'Không phát sinh';
 
-    const updatedRequests = requests.map(req => {
-      if (req.id === selectedId) {
-        return {
-          ...req,
-          status: 'Đã đối soát',
-          refundRate,
-          refundBase: basicRefund,
-          unpaidRent: selectedRequest.unpaidRent,
-          unpaidService: selectedRequest.unpaidService,
-          violationFee: selectedRequest.violationFee,
-          damageTotal,
-          otherDeductions,
-          totalDeduction,
-          finalAmount,
-          settlementType,
-          settlementData: {
-            depositAmount: selectedRequest.depositAmount,
-            refundRate,
-            basicRefund,
-            totalDeduction,
-            finalResult,
-            resultText: getResultText(),
-            otherDeductions
-          }
+    (async () => {
+      try {
+        const settlementType = finalResult > 0 ? 'Hoàn lại' : finalResult < 0 ? 'Thu thêm' : 'Không phát sinh';
+        const dataBody = {
+          maNV: getAuthHeaders()['x-user-id'] || window.localStorage.getItem('userId') || 'NV001',
+          chiSoDienCuoi: selectedRequest.electricEnd,
+          chiSoNuocCuoi: selectedRequest.waterEnd,
+          trangThaiPhong: 'Tot',
+          ghiChu: JSON.stringify({ settlementData: { finalResult, totalDeduction, refundRate }, otherDeductions }),
+          khauTru: (selectedRequest.damageItems || []).map((d: any) => ({ maTS: d.maTS || null, soLuong: 1, chiPhiKhauTru: d.amount || 0, ghiChu: d.description || '' })),
         };
+
+        // If we have maBBTP (created at inspection), call PUT to update; otherwise POST to create
+        let resp;
+        if (selectedRequest.maBBTP) {
+          resp = await fetch(`${API_BASE}/services/checkouts/${selectedRequest.maBBTP}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(dataBody),
+          });
+        } else {
+          const payload = { ...dataBody, maHD: selectedRequest.contractId, ngayTra: selectedRequest.expectedCheckoutDate || new Date().toISOString().split('T')[0] };
+          resp = await fetch(`${API_BASE}/services/checkouts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(payload),
+          });
+        }
+
+        const result = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(result.message || 'Không thể lưu đối soát');
+
+        const maBBTP = result.data?.maBBTP || selectedRequest.maBBTP || null;
+
+        const updatedRequests = requests.map(req => {
+          if (req.id === selectedId) {
+            return {
+              ...req,
+              status: 'Đã đối soát',
+              refundRate,
+              refundBase: basicRefund,
+              unpaidRent: selectedRequest.unpaidRent,
+              unpaidService: selectedRequest.unpaidService,
+              violationFee: selectedRequest.violationFee,
+              damageTotal,
+              otherDeductions,
+              totalDeduction,
+              finalAmount,
+              settlementType,
+              settlementData: {
+                depositAmount: selectedRequest.depositAmount,
+                refundRate,
+                basicRefund,
+                totalDeduction,
+                finalResult,
+                resultText: getResultText(),
+                otherDeductions
+              },
+              maBBTP,
+            };
+          }
+          return req;
+        });
+
+        setRequests(updatedRequests);
+        toast.success('Đã lưu kết quả đối soát tài chính và cập nhật vào cơ sở dữ liệu.');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Lỗi khi lưu đối soát.');
       }
-      return req;
-    });
-    setRequests(updatedRequests);
-    toast.success('Đã lưu kết quả đối soát tài chính.');
+    })();
   };
 
 

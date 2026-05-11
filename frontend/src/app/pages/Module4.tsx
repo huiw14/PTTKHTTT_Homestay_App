@@ -71,6 +71,45 @@ type EligibleDeposit = {
   soGiuong: number;
 };
 
+type ApiHandoverRecord = {
+  maBBBG: string;
+  maHD: string;
+  maNV: string;
+  ngayBanGiao: string;
+  chiSoDienDau: number;
+  chiSoNuocDau: number;
+  ghiChu: string | null;
+  nhanVien?: {
+    hoTen?: string | null;
+  } | null;
+};
+
+type HandoverChecklist = {
+  bed: boolean;
+  mattress: boolean;
+  personalLocker: boolean;
+  accessCard: boolean;
+  roomClean: boolean;
+  rulesGuided: boolean;
+  electricityMeter: string;
+  waterMeter: string;
+  roomNotes: string;
+};
+
+type HandoverContractRecord = {
+  contractId: string;
+  customerName: string;
+  roomName: string;
+  bedCount: number;
+  handoverDate: string;
+  staffName: string;
+  status: "Chưa bàn giao" | "Đã bàn giao";
+  electricIndex?: string;
+  waterIndex?: string;
+  note?: string;
+  checklist?: HandoverChecklist;
+};
+
 type ContractRecord = {
   id: string;
   depositId: string;
@@ -166,6 +205,58 @@ const mapApiContract = (item: ApiContractRecord): ContractRecord => ({
   depositAmount: item.tienCoc,
   staffId: item.maNV,
 });
+
+const mapContractToHandoverRow = (contract: ApiContractRecord, handover?: ApiHandoverRecord): HandoverContractRecord => ({
+  contractId: contract.maHD,
+  customerName: contract.khachHangName ?? "Chưa xác định",
+  roomName: contract.roomSummary || "Chưa xác định",
+  bedCount: contract.soThanhVien,
+  handoverDate: handover ? normalizeDate(handover.ngayBanGiao) : normalizeDate(contract.ngayBatDau),
+  staffName: handover?.nhanVien?.hoTen ?? contract.maNV,
+  status: handover ? "Đã bàn giao" : "Chưa bàn giao",
+  electricIndex: handover ? String(handover.chiSoDienDau) : undefined,
+  waterIndex: handover ? String(handover.chiSoNuocDau) : undefined,
+  note: handover?.ghiChu ?? undefined,
+  checklist: handover
+    ? {
+        bed: true,
+        mattress: true,
+        personalLocker: true,
+        accessCard: true,
+        roomClean: true,
+        rulesGuided: true,
+        electricityMeter: String(handover.chiSoDienDau),
+        waterMeter: String(handover.chiSoNuocDau),
+        roomNotes: handover.ghiChu ?? "",
+      }
+    : undefined,
+});
+
+const getAuthHeaders = (): Record<string, string> => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const currentUserRaw = window.localStorage.getItem("currentUser");
+  if (currentUserRaw) {
+    try {
+      const currentUser = JSON.parse(currentUserRaw);
+      if (currentUser?.id && currentUser?.role) {
+        return {
+          "x-user-id": String(currentUser.id),
+          "x-user-role": String(currentUser.role),
+        };
+      }
+    } catch {
+      // Fallback below.
+    }
+  }
+
+  return {
+    "x-user-id": window.localStorage.getItem("userId") || "NV001",
+    "x-user-role": window.localStorage.getItem("userRole") || "sale",
+  };
+};
 
 // Xét duyệt điều kiện và Quản lý thành viên
 export function ContractMembers() {
@@ -1157,50 +1248,9 @@ export function ContractReceipts() {
 
 // Bàn giao phòng
 export function ContractHandover() {
-  const [contracts, setContracts] = useState([
-    {
-      contractId: "CT001",
-      customerName: "Nguyễn Việt Hoàng",
-      roomName: "R101",
-      bedCount: 2,
-      handoverDate: getTodayInputValue(),
-      staffName: "Phạm Đình Bảo",
-      status: "Chưa bàn giao" as const,
-    },
-    {
-      contractId: "CT002",
-      customerName: "Vũ Kiều Oanh",
-      roomName: "R102",
-      bedCount: 2,
-      handoverDate: "2025-10-01",
-      staffName: "Nguyễn Thị Lan",
-      status: "Đã bàn giao" as const,
-      electricIndex: "120",
-      waterIndex: "45",
-      note: "Phòng sạch sẽ, thiết bị đầy đủ",
-      checklist: {
-        bed: true,
-        mattress: true,
-        personalLocker: true,
-        accessCard: true,
-        roomClean: true,
-        rulesGuided: true,
-      },
-    },
-    {
-      contractId: "CT003",
-      customerName: "Nguyễn Tiến Khang",
-      roomName: "R103",
-      bedCount: 1,
-      handoverDate: getTodayInputValue(),
-      staffName: "Trần Văn Minh",
-      status: "Chưa bàn giao" as const,
-    },
-  ]);
-
-  const [selectedContract, setSelectedContract] = useState<typeof contracts[0] | null>(null);
-
-  const [checklist, setChecklist] = useState({
+  const [handoverContracts, setHandoverContracts] = useState<HandoverContractRecord[]>([]);
+  const [selectedContract, setSelectedContract] = useState<HandoverContractRecord | null>(null);
+  const [checklist, setChecklist] = useState<HandoverChecklist>({
     bed: false,
     mattress: false,
     personalLocker: false,
@@ -1211,18 +1261,88 @@ export function ContractHandover() {
     waterMeter: "",
     roomNotes: "",
   });
-
   const [isCompleted, setIsCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const handleSelectContract = (contract: typeof contracts[0]) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchHandoverData = async () => {
+      setLoading(true);
+      setLoadError(null);
+
+      try {
+        const headers = getAuthHeaders();
+        const [contractsResponse, handoversResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/contracts`, { headers }),
+          fetch(`${API_BASE_URL}/api/services/handovers`, { headers }),
+        ]);
+
+        const [contractsPayload, handoversPayload] = await Promise.all([
+          contractsResponse.json().catch(() => ({})),
+          handoversResponse.json().catch(() => ({})),
+        ]);
+
+        if (!contractsResponse.ok) {
+          throw new Error(contractsPayload.message || "Không thể tải danh sách hợp đồng.");
+        }
+
+        if (!handoversResponse.ok) {
+          throw new Error(handoversPayload.message || "Không thể tải danh sách biên bản bàn giao.");
+        }
+
+        const handoverMap = new Map<string, ApiHandoverRecord>();
+        for (const item of (handoversPayload.data || []) as ApiHandoverRecord[]) {
+          handoverMap.set(item.maHD, item);
+        }
+
+        const rows = ((contractsPayload.data || []) as ApiContractRecord[])
+          .map((contract) => mapContractToHandoverRow(contract, handoverMap.get(contract.maHD)))
+          .sort((left, right) => {
+            if (left.status !== right.status) {
+              return left.status === "Chưa bàn giao" ? -1 : 1;
+            }
+            return left.contractId.localeCompare(right.contractId);
+          });
+
+        if (!cancelled) {
+          setHandoverContracts(rows);
+          setSelectedContract((current) => {
+            if (!current) {
+              return rows[0] ?? null;
+            }
+            return rows.find((row) => row.contractId === current.contractId) ?? rows[0] ?? null;
+          });
+        }
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "Không thể tải danh sách hợp đồng bàn giao.";
+        setLoadError(message);
+        toast.error(message);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchHandoverData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSelectContract = (contract: HandoverContractRecord) => {
     setSelectedContract(contract);
     setChecklist(contract.checklist || {
-      bed: contract.status === "Đã bàn giao" ? true : false,
-      mattress: contract.status === "Đã bàn giao" ? true : false,
-      personalLocker: contract.status === "Đã bàn giao" ? true : false,
-      accessCard: contract.status === "Đã bàn giao" ? true : false,
-      roomClean: contract.status === "Đã bàn giao" ? true : false,
-      rulesGuided: contract.status === "Đã bàn giao" ? true : false,
+      bed: contract.status === "Đã bàn giao",
+      mattress: contract.status === "Đã bàn giao",
+      personalLocker: contract.status === "Đã bàn giao",
+      accessCard: contract.status === "Đã bàn giao",
+      roomClean: contract.status === "Đã bàn giao",
+      rulesGuided: contract.status === "Đã bàn giao",
       electricityMeter: contract.electricIndex || "",
       waterMeter: contract.waterIndex || "",
       roomNotes: contract.note || "",
@@ -1230,8 +1350,8 @@ export function ContractHandover() {
     setIsCompleted(contract.status === "Đã bàn giao");
   };
 
-  const handleChecklistChange = (key: keyof typeof checklist, value: boolean | string) => {
-    setChecklist(prev => ({ ...prev, [key]: value }));
+  const handleChecklistChange = (key: keyof HandoverChecklist, value: boolean | string) => {
+    setChecklist((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleComplete = () => {
@@ -1251,9 +1371,10 @@ export function ContractHandover() {
       return;
     }
 
-    const updatedContract = {
+    const updatedContract: HandoverContractRecord = {
       ...selectedContract,
-      status: "Đã bàn giao" as const,
+      status: "Đã bàn giao",
+      handoverDate: selectedContract.handoverDate || getTodayInputValue(),
       electricIndex: electricityMeter,
       waterIndex: waterMeter,
       note: checklist.roomNotes,
@@ -1264,18 +1385,58 @@ export function ContractHandover() {
         accessCard,
         roomClean,
         rulesGuided,
+        electricityMeter,
+        waterMeter,
+        roomNotes: checklist.roomNotes,
       },
     };
 
-    setContracts(prev => prev.map(c => c.contractId === selectedContract.contractId ? updatedContract : c));
-    setSelectedContract(updatedContract);
-    setIsCompleted(true);
-    toast.success("Hoàn tất bàn giao phòng. Khách chính thức nhận phòng.");
+    (async () => {
+      try {
+        const headers = getAuthHeaders();
+        const body = {
+          maHD: selectedContract.contractId,
+          maNV: headers['x-user-id'] || window.localStorage.getItem('userId') || 'NV001',
+          ngayBanGiao: updatedContract.handoverDate,
+          chiSoDienDau: Number(updatedContract.electricIndex || 0),
+          chiSoNuocDau: Number(updatedContract.waterIndex || 0),
+          ghiChu: updatedContract.note || '',
+          chiTiet: [],
+        };
+
+        const resp = await fetch(`${API_BASE_URL}/api/services/handovers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify(body),
+        });
+
+        const payload = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(payload.message || 'Không thể lưu biên bản bàn giao');
+
+        setHandoverContracts((prev) => prev.map((contract) => (contract.contractId === selectedContract.contractId ? updatedContract : contract)));
+        setSelectedContract(updatedContract);
+        setIsCompleted(true);
+        toast.success('Biên bản bàn giao đã được lưu vào cơ sở dữ liệu.');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Lỗi khi lưu biên bản bàn giao.';
+        toast.error(message);
+      }
+    })();
   };
 
   return (
     <div className="space-y-6">
       <PageHeader title="Biên bản Bàn giao phòng" description="Check-list tài sản cấp phát và xác nhận đối trạng thái." />
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        Danh sách bên dưới được lấy từ API backend và đối chiếu với biên bản bàn giao đã lưu trong cơ sở dữ liệu.
+      </div>
+
+      {loadError && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="py-4 text-sm text-amber-800">{loadError}</CardContent>
+        </Card>
+      )}
 
       {/* Phần A: Danh sách hợp đồng */}
       <Card>
@@ -1296,7 +1457,23 @@ export function ContractHandover() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contracts.map((contract) => (
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-slate-500">
+                    Đang tải danh sách hợp đồng từ cơ sở dữ liệu...
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!loading && handoverContracts.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-slate-500">
+                    Không có hợp đồng nào để bàn giao.
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!loading && handoverContracts.map((contract) => (
                 <TableRow key={contract.contractId}>
                   <TableCell className="font-medium">{contract.contractId}</TableCell>
                   <TableCell>{contract.customerName}</TableCell>
