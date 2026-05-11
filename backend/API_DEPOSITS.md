@@ -12,7 +12,7 @@
 - **Method**: `GET`
 - **URL**: `/api/deposits`
 - **Query Parameters**:
-  - `status`: Filter by status (ChoThanhToan, DaThanhToan, TuDongHuy, HuyThuCong)
+  - `status`: Filter by status (ChoDuyet, DaDuyet, DaHuy)
   - `maCN`: Filter by branch ID
   - `page`: Page number (default: 1)
   - `limit`: Items per page (default: 10)
@@ -27,7 +27,7 @@
       "maNV": "NV001",
       "maCN": "CN001",
       "tienCoc": 1000000,
-      "trangThai": "DaThanhToan",
+      "trangThai": "DaDuyet",
       "ngayCoc": "2024-01-15T10:30:00Z",
       "hanThanhToan": "2024-01-16T10:30:00Z",
       "khachHang": { ... },
@@ -78,14 +78,13 @@
 - **Body**:
 ```json
 {
-  "trangThai": "DaThanhToan"
+  "trangThai": "DaDuyet"
 }
 ```
 - **Valid Statuses**:
-  - `ChoThanhToan`: Chờ thanh toán (24h)
-  - `DaThanhToan`: Đã thanh toán
-  - `TuDongHuy`: Tự động hủy (quá hạn)
-  - `HuyThuCong`: Hủy thủ công
+  - `ChoDuyet`: Chờ duyệt / chờ thanh toán (24h)
+  - `DaDuyet`: Đã duyệt / đã thanh toán
+  - `DaHuy`: Đã hủy
 - **Response**: Updated deposit object
 
 ### 5. Delete Deposit
@@ -102,9 +101,8 @@
 ## Status Transitions
 
 ```
-ChoThanhToan ──> DaThanhToan (user confirms payment)
-              ──> TuDongHuy (automatic after 24h - trigger)
-              ──> HuyThuCong (user cancels manually)
+ChoDuyet ──> DaDuyet (user confirms payment)
+         ──> DaHuy (automatic after 24h or user cancels manually)
 ```
 
 ## Error Responses
@@ -149,7 +147,7 @@ curl -X POST http://localhost:5000/api/deposits \
 # Update status
 curl -X PUT http://localhost:5000/api/deposits/PC001 \
   -H "Content-Type: application/json" \
-  -d '{"trangThai": "DaThanhToan"}'
+  -d '{"trangThai": "DaDuyet"}'
 
 # Delete deposit
 curl -X DELETE http://localhost:5000/api/deposits/PC001

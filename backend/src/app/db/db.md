@@ -142,7 +142,7 @@ Hệ thống gồm **22 bảng**, chia thành 6 nhóm theo nghiệp vụ:
       ▼
 [PhieuCoc] ──► Thanh toán trong 24h ──► [ChiTietPhieuCoc]
       │                  │
-      │           Quá hạn → TuDongHuy (trigger tự reset giường)
+      │           Quá hạn → DaHuy (trigger tự reset giường)
       ▼
 [HopDong] ──► [ThanhVien] ──► [PhieuThu] (thu tiền hàng kỳ)
       │
@@ -180,8 +180,8 @@ Các trigger chạy ngầm trên Supabase, đảm bảo dữ liệu luôn nhất
 
 | Trigger | Khi nào chạy | Làm gì |
 |---|---|---|
-| `trg_cap_nhat_giuong_khi_coc` | Phiếu cọc → `DaThanhToan` | Giường/phòng chuyển `DaCoc` |
-| `trg_reset_giuong_khi_huy_coc` | Phiếu cọc → `TuDongHuy` / `HuyThuCong` | Giường/phòng reset về `Trong` |
+| `trg_cap_nhat_giuong_khi_coc` | Phiếu cọc → `DaDuyet` | Giường/phòng chuyển `DaCoc` |
+| `trg_reset_giuong_khi_huy_coc` | Phiếu cọc → `DaHuy` | Giường/phòng reset về `Trong` |
 | `trg_cap_nhat_giuong_khi_nhan_phong` | INSERT vào `ThanhVien` | Giường chuyển `DaThue` |
 | `trg_reset_phong_khi_thanh_ly` | INSERT vào `ThanhLyHD` | Reset giường, phòng, hợp đồng |
 

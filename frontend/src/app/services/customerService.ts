@@ -1,22 +1,6 @@
+import { getAuthHeaders } from './authHeaders';
+
 const API_BASE = 'http://localhost:5000/api';
-
-function getAuthHeaders() {
-  if (typeof window === 'undefined') return {};
-
-  const userRaw = window.localStorage.getItem('currentUser');
-  if (!userRaw) return {};
-
-  try {
-    const user = JSON.parse(userRaw);
-    if (!user?.id || !user?.role) return {};
-    return {
-      'x-user-id': String(user.id),
-      'x-user-role': String(user.role),
-    };
-  } catch {
-    return {};
-  }
-}
 
 export interface CustomerPayload {
   hoTen: string;

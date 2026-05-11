@@ -22,6 +22,8 @@ export function Login() {
       username: username.trim() || 'sale01',
       name: user.name,
     }));
+    window.localStorage.setItem('userId', user.id);
+    window.localStorage.setItem('userRole', user.role);
 
     if (!password.trim()) {
       return;

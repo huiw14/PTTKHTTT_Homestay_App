@@ -6,7 +6,7 @@
 CREATE OR REPLACE FUNCTION fn_cap_nhat_giuong_khi_coc()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW."trangThai" = 'DaThanhToan' AND OLD."trangThai" != 'DaThanhToan' THEN
+  IF NEW."trangThai" = 'DaDuyet' AND OLD."trangThai" != 'DaDuyet' THEN
     -- Cập nhật các giường trong phiếu cọc → DaCoc
     UPDATE "Giuong" g
     SET "trangThai" = 'DaCoc'
@@ -40,8 +40,8 @@ EXECUTE FUNCTION fn_cap_nhat_giuong_khi_coc();
 CREATE OR REPLACE FUNCTION fn_reset_giuong_khi_huy_coc()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW."trangThai" IN ('TuDongHuy', 'HuyThuCong')
-     AND OLD."trangThai" NOT IN ('TuDongHuy', 'HuyThuCong') THEN
+  IF NEW."trangThai" = 'DaHuy'
+     AND OLD."trangThai" != 'DaHuy' THEN
 
     UPDATE "Giuong" g
     SET "trangThai" = 'Trong'
@@ -64,6 +64,18 @@ BEGIN
       WHERE g2."maPhong" = p."maPhong"
         AND g2."trangThai" != 'Trong'
     );
+
+    -- Room deposits may point directly to PhieuCoc.maPhong.
+    IF NEW."maPhong" IS NOT NULL THEN
+      UPDATE "Phong" p
+      SET "trangThai" = 'Trong'
+      WHERE p."maPhong" = NEW."maPhong"
+      AND NOT EXISTS (
+        SELECT 1 FROM "Giuong" g2
+        WHERE g2."maPhong" = p."maPhong"
+          AND g2."trangThai" != 'Trong'
+      );
+    END IF;
   END IF;
   RETURN NEW;
 END;

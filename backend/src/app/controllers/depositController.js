@@ -342,10 +342,10 @@ export const approvePayment = async (req, res) => {
       });
     }
 
-    // Update status to "DaThanhToan" (approved & paid)
+    // Update status to "DaDuyet" (approved & paid)
     const updated = await prisma.phieuCoc.update({
       where: { maPC: id },
-      data: { trangThai: 'DaThanhToan' },
+      data: { trangThai: 'DaDuyet' },
       include: {
         khachHang: true,
         nhanVien: true,

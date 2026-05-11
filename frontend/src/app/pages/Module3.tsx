@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useDepositStore } from "../hooks/useDepositStore";
 import { transformBackendDeposit, transformToBackendPayload, mapStatusToBackend } from "../utils/depositTransform";
 import { depositService } from "../services/depositService";
+import { getAuthHeaders, getCurrentUser } from "../services/authHeaders";
 
 const PageHeader = ({ title, description }: { title: string, description: string }) => (
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -41,15 +42,10 @@ export function DepositCreate() {
         setLoadingCustomers(true);
         const API_BASE = 'http://localhost:5000/api';
         
-        // Get auth headers from localStorage or use defaults
-        const userId = localStorage.getItem('userId') || 'NV001';
-        const userRole = localStorage.getItem('userRole') || 'sale';
-        
         const response = await fetch(`${API_BASE}/customers`, {
           headers: { 
             'Content-Type': 'application/json',
-            'x-user-id': userId,
-            'x-user-role': userRole,
+            ...getAuthHeaders(),
           },
         });
         
@@ -181,7 +177,7 @@ export function DepositCreate() {
       // Call API
       const payload: any = {
         maKH: selectedCustomer,
-        maNV: "NV001", // Current user (mock)
+        maNV: getCurrentUser().id,
         maCN: "CN001", // Current branch (mock)
         tienCoc: totalDeposit,
         beds: depositType === "giường" ? selectedBedIds : [], // Only for bed deposits

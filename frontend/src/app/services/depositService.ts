@@ -1,4 +1,6 @@
 // API service for deposits
+import { getAuthHeaders } from './authHeaders';
+
 const API_BASE = 'http://localhost:5000/api';
 
 export interface DepositPayload {
@@ -36,7 +38,7 @@ export const depositService = {
 
     const response = await fetch(`${API_BASE}/deposits?${params}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
@@ -52,7 +54,7 @@ export const depositService = {
   async getDepositDetail(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
@@ -68,7 +70,7 @@ export const depositService = {
   async createDeposit(payload: DepositPayload) {
     const response = await fetch(`${API_BASE}/deposits`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(payload),
     });
 
@@ -86,7 +88,7 @@ export const depositService = {
   async updateDeposit(id: string, payload: DepositUpdatePayload) {
     const response = await fetch(`${API_BASE}/deposits/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(payload),
     });
 
@@ -104,7 +106,7 @@ export const depositService = {
   async deleteDeposit(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
@@ -121,7 +123,7 @@ export const depositService = {
   async sendPaymentRequest(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}/send-payment-request`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
@@ -138,7 +140,7 @@ export const depositService = {
   async approvePayment(id: string) {
     const response = await fetch(`${API_BASE}/deposits/${id}/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
@@ -158,7 +160,7 @@ export const depositService = {
 
     const response = await fetch(`${API_BASE}/deposits/available-rooms?${params}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
@@ -179,7 +181,7 @@ export const depositService = {
 
     const response = await fetch(`${API_BASE}/deposits/available-beds?${params}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
 
     if (!response.ok) {
