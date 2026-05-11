@@ -1,14 +1,16 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { 
-  LayoutDashboard, 
-  Settings, 
-  Users, 
-  CreditCard, 
-  FileText, 
+import {
+  LayoutDashboard,
+  Settings,
+  Users,
+  CreditCard,
+  FileText,
   Plus,
   LogOut,
   Bell,
-  UserCircle
+  UserCircle,
+  ShieldCheck,
+  DoorOpen
 } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -43,9 +45,11 @@ const MENU_GROUPS = [
   {
     title: "Hợp đồng & Trả phòng (Module 4 & 5)",
     items: [
+      { name: "Xét duyệt thành viên", path: "/contracts/members", icon: ShieldCheck },
       { name: "Quản lý Hợp đồng", path: "/contracts/manage", icon: FileText },
       { name: "Lập Hợp đồng mới", path: "/contracts/create", icon: Plus },
       { name: "Thu tiền kỳ đầu", path: "/contracts/receipts", icon: CreditCard },
+      { name: "Bàn giao phòng", path: "/contracts/handover", icon: DoorOpen },
       { name: "Lịch trả phòng", path: "/checkout/schedules", icon: LogOut },
       { name: "Thanh lý & Đối soát", path: "/checkout/slips", icon: LogOut },
     ]
@@ -63,7 +67,7 @@ export function Layout() {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
-      
+
       {/* ================= SIDEBAR (MENU TRÁI) ================= */}
       <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300">
         {/* Logo */}
@@ -88,11 +92,10 @@ export function Layout() {
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                        isActive 
-                          ? "bg-blue-600 text-white font-medium shadow-md" 
-                          : "hover:bg-slate-800 hover:text-white"
-                      }`}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${isActive
+                        ? "bg-blue-600 text-white font-medium shadow-md"
+                        : "hover:bg-slate-800 hover:text-white"
+                        }`}
                     >
                       <Icon size={18} className={isActive ? "text-white" : "text-slate-400"} />
                       <span className="text-sm">{item.name}</span>
@@ -106,8 +109,8 @@ export function Layout() {
 
         {/* User Info & Đăng xuất (Đáy Sidebar) */}
         <div className="p-4 border-t border-slate-800">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-slate-800"
             onClick={handleLogout}
           >
@@ -119,7 +122,7 @@ export function Layout() {
 
       {/* ================= KHU VỰC NỘI DUNG CHÍNH ================= */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
+
         {/* TOPBAR (THANH TIÊU ĐỀ) */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-4">
@@ -134,7 +137,7 @@ export function Layout() {
               <Bell size={18} className="text-slate-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </Button>
-            
+
             <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-medium text-slate-700">Thành Minh</p>

@@ -13,6 +13,11 @@ import {
   TableCell,
   Button,
   Input,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "../components/ui";
 import { contracts } from "../data/mockData";
 import { toast } from "sonner";
@@ -33,6 +38,7 @@ import {
   Sparkles,
   CircleAlert,
   CalendarDays,
+  X,
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
@@ -160,21 +166,114 @@ const mapApiContract = (item: ApiContractRecord): ContractRecord => ({
   staffId: item.maNV,
 });
 
-// X�t duy?t di?u ki?n & Qu?n l� th�nh vi�n
+// Xét duyệt điều kiện và Quản lý thành viên
 export function ContractMembers() {
-  const members = [
-    { id: "M001", name: "�?ng Vi?t H�ng", type: "�?i di?n", cmt: "001099123456", dob: "2001-05-12", status: "�� duy?t", contract: "CT001" },
-    { id: "M002", name: "Nguy?n Ti?n Khang", type: "? gh�p", cmt: "001099654321", dob: "2002-11-20", status: "Ch? duy?t", contract: "CT001" },
-    { id: "M003", name: "Vu Ki?u Oanh", type: "�?i di?n", cmt: "001099999888", dob: "2000-01-01", status: "�� duy?t", contract: "CT002" },
-  ];
+  const [members, setMembers] = useState([
+    {
+      id: "M001",
+      name: "Nguyễn Việt Hoàng",
+      type: "Đại diện",
+      cmt: "001099123456",
+      dob: "2001-05-12",
+      status: "Chờ duyệt",
+      contract: "CT001",
+      conditions: {
+        validDocument: true,
+        residenceInfo: true,
+        genderSuitable: true,
+        capacitySuitable: false,
+        acceptedRules: true,
+        noViolation: true,
+      },
+    },
+    {
+      id: "M002",
+      name: "Nguyễn Tiến Khang",
+      type: "Ở ghép",
+      cmt: "001099654321",
+      dob: "2002-11-20",
+      status: "Chờ duyệt",
+      contract: "CT001",
+      conditions: {
+        validDocument: true,
+        residenceInfo: false,
+        genderSuitable: true,
+        capacitySuitable: true,
+        acceptedRules: true,
+        noViolation: true,
+      },
+    },
+    {
+      id: "M003",
+      name: "Vũ Kiều Oanh",
+      type: "Đại diện",
+      cmt: "001099999888",
+      dob: "2000-01-01",
+      status: "Chờ duyệt",
+      contract: "CT002",
+      conditions: {
+        validDocument: true,
+        residenceInfo: true,
+        genderSuitable: true,
+        capacitySuitable: true,
+        acceptedRules: false,
+        noViolation: true,
+      },
+    },
+  ]);
+
+  const [selectedMember, setSelectedMember] = useState<typeof members[0] | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const handleRowClick = (member: typeof members[0]) => {
+    setSelectedMember({ ...member });
+    setShowModal(true);
+  };
+
+  const handleConditionChange = (key: keyof typeof selectedMember.conditions, checked: boolean) => {
+    if (selectedMember) {
+      setSelectedMember(prev => prev ? { ...prev, conditions: { ...prev.conditions, [key]: checked } } : null);
+    }
+  };
+
+  const isAllConditionsMet = selectedMember ? Object.values(selectedMember.conditions).every(Boolean) : false;
+
+  const handleSaveUpdate = () => {
+    if (selectedMember) {
+      setMembers(prev => prev.map(m => m.id === selectedMember.id ? { ...selectedMember } : m));
+      toast.success("Đã lưu cập nhật điều kiện.");
+    }
+  };
+
+  const handleApprove = () => {
+    if (!isAllConditionsMet) {
+      toast.error("Thành viên chưa đáp ứng đủ điều kiện lưu trú.");
+      return;
+    }
+    if (selectedMember) {
+      const updatedMember = { ...selectedMember, status: "Đã duyệt" };
+      setMembers(prev => prev.map(m => m.id === selectedMember.id ? updatedMember : m));
+      setSelectedMember(updatedMember);
+      toast.success("Đã duyệt điều kiện lưu trú cho thành viên.");
+    }
+  };
+
+  const conditionLabels = {
+    validDocument: "Giấy tờ tùy thân hợp lệ",
+    residenceInfo: "Thông tin cư trú đầy đủ",
+    genderSuitable: "Giới tính phù hợp với phòng/khu vực",
+    capacitySuitable: "Số lượng thành viên phù hợp số giường/phòng đã đặt",
+    acceptedRules: "Đồng ý nội quy ký túc xá",
+    noViolation: "Không vi phạm điều kiện lưu trú",
+  };
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Qu?n l� & X�t duy?t Th�nh vi�n" description="Qu?n l� nh�n th�n v� duy?t h? so tru?c khi k� h?p d?ng." btnText="Th�m th�nh vi�n" />
+      <PageHeader title="Quản lý & Xét duyệt Thành viên" description="Quản lý nhân thân và duyệt hồ sơ trước khi ký hợp đồng." btnText="Thêm thành viên" />
       <div className="mb-4 flex gap-4">
-        <Input placeholder="T�m CMND/CCCD..." className="max-w-xs" />
+        <Input placeholder="Tìm CMND/CCCD..." className="max-w-xs" />
         <select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm">
-          <option>T?t c? H?p d?ng</option>
+          <option>Tất cả Hợp đồng</option>
           {contracts.map((c) => (
             <option key={c.id} value={c.id}>
               {c.id}
@@ -187,46 +286,39 @@ export function ContractMembers() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>M� TV</TableHead>
-                <TableHead>H? T�n</TableHead>
+                <TableHead>Mã TV</TableHead>
+                <TableHead>Họ Tên</TableHead>
                 <TableHead>CMND/CCCD</TableHead>
-                <TableHead>Ng�y sinh</TableHead>
-                <TableHead>Vai tr�</TableHead>
-                <TableHead>Thu?c H�</TableHead>
-                <TableHead>T�nh tr?ng</TableHead>
-                <TableHead>Thao t�c</TableHead>
+                <TableHead>Ngày sinh</TableHead>
+                <TableHead>Vai trò</TableHead>
+                <TableHead>Thuộc HĐ</TableHead>
+                <TableHead>Tình trạng</TableHead>
+                <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {members.map((m) => (
-                <TableRow key={m.id}>
+                <TableRow key={m.id} className="cursor-pointer hover:bg-slate-50" onClick={() => handleRowClick(m)}>
                   <TableCell className="font-medium">{m.id}</TableCell>
                   <TableCell>{m.name}</TableCell>
                   <TableCell>{m.cmt}</TableCell>
                   <TableCell>{m.dob}</TableCell>
                   <TableCell>
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${m.type === "�?i di?n" ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-700"}`}>
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${m.type === "Đại diện" ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-700"}`}>
                       {m.type}
                     </span>
                   </TableCell>
                   <TableCell className="font-semibold text-blue-600">{m.contract}</TableCell>
                   <TableCell>
-                    <span className={`flex w-max items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${m.status === "�� duy?t" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
-                      {m.status === "�� duy?t" ? <ShieldCheck className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                    <span className={`flex w-max items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${m.status === "Đã duyệt" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                      {m.status === "Đã duyệt" ? <ShieldCheck className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
                       {m.status}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      {m.status === "Ch? duy?t" && (
-                        <Button size="sm" className="h-7 bg-green-600 text-xs">
-                          Duy?t
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleRowClick(m); }}>
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -234,11 +326,75 @@ export function ContractMembers() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Cập nhật thành viên nhóm</DialogTitle>
+          </DialogHeader>
+          {selectedMember && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><strong>Mã thành viên:</strong> {selectedMember.id}</div>
+                <div><strong>Họ tên:</strong> {selectedMember.name}</div>
+                <div><strong>CMND/CCCD:</strong> {selectedMember.cmt}</div>
+                <div><strong>Ngày sinh:</strong> {selectedMember.dob}</div>
+                <div><strong>Vai trò:</strong> {selectedMember.type}</div>
+                <div><strong>Hợp đồng:</strong> {selectedMember.contract}</div>
+                <div className="col-span-2">
+                  <strong>Trạng thái:</strong>{" "}
+                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${selectedMember.status === "Đã duyệt" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {selectedMember.status === "Đã duyệt" ? <ShieldCheck className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                    {selectedMember.status}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">Điều kiện lưu trú</h4>
+                <div className="space-y-2">
+                  {Object.entries(conditionLabels).map(([key, label]) => {
+                    const conditionKey = key as keyof typeof selectedMember.conditions;
+                    const checked = selectedMember.conditions[conditionKey];
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => handleConditionChange(conditionKey, e.target.checked)}
+                            className="h-4 w-4 rounded text-blue-600"
+                          />
+                          <span className="text-sm">{label}</span>
+                        </label>
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checked ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          {checked ? "Đạt" : "Chưa đạt"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowModal(false)}>
+              Đóng
+            </Button>
+            <Button onClick={handleSaveUpdate}>
+              Lưu cập nhật
+            </Button>
+            <Button onClick={handleApprove} disabled={!isAllConditionsMet}>
+              Xác nhận duyệt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// L?p H?p d?ng thu�
+// Lập Hợp đồng thuê
 export function ContractCreate() {
   const navigate = useNavigate();
   const [availableDeposits, setAvailableDeposits] = useState<EligibleDeposit[]>([]);
@@ -659,13 +815,12 @@ export function ContractManage() {
                     <TableCell>{contract.cycle}</TableCell>
                     <TableCell>
                       <span
-                        className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                          contract.status === "DangHieuLuc"
-                            ? "bg-green-100 text-green-700"
-                            : contract.status === "DaThanhLy"
-                              ? "bg-slate-200 text-slate-700"
-                              : "bg-blue-100 text-blue-700"
-                        }`}
+                        className={`rounded-md px-2 py-1 text-xs font-semibold ${contract.status === "DangHieuLuc"
+                          ? "bg-green-100 text-green-700"
+                          : contract.status === "DaThanhLy"
+                            ? "bg-slate-200 text-slate-700"
+                            : "bg-blue-100 text-blue-700"
+                          }`}
                       >
                         {contract.status}
                       </span>
@@ -685,28 +840,276 @@ export function ContractManage() {
   );
 }
 
-// Thu ti?n k? d?u
+// Thu tiền kỳ đầu
 export function ContractReceipts() {
-  const receipts = [
-    { id: "PT001", contract: "CT001", type: "Thu ti?n ph�ng T4 + DV", amount: 5500000, date: "2026-04-05", status: "Chua thu" },
-    { id: "PT002", contract: "CT002", type: "Thu ti?n ph�ng T10-T12", amount: 7200000, date: "2025-10-01", status: "�� thu" },
-  ];
+  const [receipts, setReceipts] = useState([
+    { id: "PT001", contract: "CT001", type: "Tiền thuê: 5,000,000đ | Điện/nước: 300,000đ | Wifi: 100,000đ | Gửi xe: 100,000đ", amount: 5500000, date: "2026-04-05", status: "Chưa thu" },
+    { id: "PT002", contract: "CT002", type: "Tiền thuê: 7,000,000đ | Điện/nước: 200,000đ | Wifi: 100,000đ | Gửi xe: 100,000đ", amount: 7200000, date: "2025-10-01", status: "Đã thu" },
+  ]);
+
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    contract: "",
+    rent: 0,
+    electricity: 0,
+    wifi: 0,
+    parking: 0,
+    date: getTodayInputValue(),
+    note: "",
+  });
+
+  const [otherFeeName, setOtherFeeName] = useState("");
+  const [otherFeeAmount, setOtherFeeAmount] = useState(0);
+  const [otherFees, setOtherFees] = useState<{ id: string; name: string; amount: number }[]>([]);
+
+  const availableContracts = ["CT001", "CT002", "CT003"];
+
+  const totalAmount = formData.rent + formData.electricity + formData.wifi + formData.parking + otherFees.reduce((sum, fee) => sum + fee.amount, 0);
+
+  const handleFormChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddOtherFee = () => {
+    if (!otherFeeName.trim()) {
+      toast.error("Vui lòng nhập nội dung khoản khác.");
+      return;
+    }
+    if (otherFeeAmount <= 0) {
+      toast.error("Số tiền khoản khác phải lớn hơn 0.");
+      return;
+    }
+    const newFee = {
+      id: `other-${Date.now()}`,
+      name: otherFeeName.trim(),
+      amount: otherFeeAmount,
+    };
+    setOtherFees(prev => [...prev, newFee]);
+    setOtherFeeName("");
+    setOtherFeeAmount(0);
+    toast.success("Đã thêm khoản khác.");
+  };
+
+  const handleRemoveOtherFee = (id: string) => {
+    setOtherFees(prev => prev.filter(fee => fee.id !== id));
+  };
+
+  const handleSaveReceipt = () => {
+    if (!formData.contract) {
+      toast.error("Vui lòng chọn hợp đồng!");
+      return;
+    }
+    if (formData.rent < 0 || formData.electricity < 0 || formData.wifi < 0 || formData.parking < 0) {
+      toast.error("Các khoản tiền không được âm!");
+      return;
+    }
+
+    const maxId = Math.max(...receipts.map(r => parseInt(r.id.slice(2))));
+    const newId = `PT${String(maxId + 1).padStart(3, "0")}`;
+    let newType = `Tiền thuê: ${formData.rent.toLocaleString()}đ | Điện/nước: ${formData.electricity.toLocaleString()}đ | Wifi: ${formData.wifi.toLocaleString()}đ | Gửi xe: ${formData.parking.toLocaleString()}đ`;
+    if (otherFees.length > 0) {
+      const otherFeesStr = otherFees.map(fee => `${fee.name} ${fee.amount.toLocaleString()}đ`).join(", ");
+      newType += ` | Khác: ${otherFeesStr}`;
+    }
+
+    const newReceipt = {
+      id: newId,
+      contract: formData.contract,
+      type: newType,
+      amount: totalAmount,
+      date: formData.date,
+      status: "Chưa thu" as const,
+    };
+
+    setReceipts(prev => [newReceipt, ...prev]);
+    setFormData({
+      contract: "",
+      rent: 0,
+      electricity: 0,
+      wifi: 0,
+      parking: 0,
+      date: getTodayInputValue(),
+      note: "",
+    });
+    setOtherFees([]);
+    setShowForm(false);
+    toast.success("Lập phiếu thu kỳ đầu thành công.");
+  };
+
+  const handleRecordPayment = (id: string) => {
+    setReceipts(prev => prev.map(r => r.id === id ? { ...r, status: "Đã thu" } : r));
+    toast.success("Đã ghi nhận thu tiền kỳ đầu.");
+  };
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Phi?u thu ti?n k? d?u" description="Ghi nh?n thu ti?n thu� th�ng d?u v� ph� d?ch v? khi kh�ch b?t d?u d?n v�o." />
+      <PageHeader
+        title="Phiếu thu tiền kỳ đầu"
+        description="Ghi nhận thu tiền thuê tháng đầu và phí dịch vụ khi khách bắt đầu dọn vào."
+        btnText="Lập phiếu thu"
+        onBtnClick={() => setShowForm(true)}
+      />
+
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Lập phiếu thu kỳ đầu</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Hợp đồng</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={formData.contract}
+                  onChange={(e) => handleFormChange("contract", e.target.value)}
+                >
+                  <option value="">-- Chọn hợp đồng --</option>
+                  {availableContracts.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ngày lập</label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => handleFormChange("date", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tiền thuê kỳ đầu (VND)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.rent}
+                  onChange={(e) => handleFormChange("rent", Number(e.target.value) || 0)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Phí điện/nước ban đầu (VND)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.electricity}
+                  onChange={(e) => handleFormChange("electricity", Number(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Phí wifi (VND)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.wifi}
+                  onChange={(e) => handleFormChange("wifi", Number(e.target.value) || 0)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Phí gửi xe (VND)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.parking}
+                  onChange={(e) => handleFormChange("parking", Number(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold">Khoản khác</h4>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nội dung khoản khác</label>
+                  <Input
+                    value={otherFeeName}
+                    onChange={(e) => setOtherFeeName(e.target.value)}
+                    placeholder="Ví dụ: Phí vệ sinh, Phí làm thẻ"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Số tiền (VND)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={otherFeeAmount}
+                    onChange={(e) => setOtherFeeAmount(Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={handleAddOtherFee} className="w-full">
+                    Thêm khoản
+                  </Button>
+                </div>
+              </div>
+              {otherFees.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Danh sách khoản khác:</label>
+                  <div className="space-y-1">
+                    {otherFees.map((fee) => (
+                      <div key={fee.id} className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 p-2">
+                        <span className="text-sm">{fee.name}: {fee.amount.toLocaleString()}đ</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveOtherFee(fee.id)}
+                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ghi chú/Nội dung thu</label>
+              <Input
+                value={formData.note}
+                onChange={(e) => handleFormChange("note", e.target.value)}
+                placeholder="Ghi chú thêm nếu có"
+              />
+            </div>
+
+            <div className="flex justify-between items-center">
+              <div className="text-sm font-semibold">
+                Tổng tiền: {totalAmount.toLocaleString()} VND
+              </div>
+              <div className="space-x-2">
+                <Button variant="outline" onClick={() => setShowForm(false)}>
+                  Hủy
+                </Button>
+                <Button onClick={handleSaveReceipt}>
+                  Lưu phiếu thu
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>M� PT</TableHead>
-                <TableHead>H?p d?ng</TableHead>
-                <TableHead>N?i dung</TableHead>
-                <TableHead>S? ti?n (VND)</TableHead>
-                <TableHead>Ng�y l?p</TableHead>
-                <TableHead>Tr?ng th�i</TableHead>
-                <TableHead>Thao t�c</TableHead>
+                <TableHead>Mã PT</TableHead>
+                <TableHead>Hợp đồng</TableHead>
+                <TableHead>Nội dung</TableHead>
+                <TableHead>Số tiền (VND)</TableHead>
+                <TableHead>Ngày lập</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -718,12 +1121,12 @@ export function ContractReceipts() {
                   <TableCell className="font-bold text-red-500">{r.amount.toLocaleString()} d</TableCell>
                   <TableCell>{r.date}</TableCell>
                   <TableCell>
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${r.status === "�� thu" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{r.status}</span>
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${r.status === "Đã thu" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{r.status}</span>
                   </TableCell>
                   <TableCell>
-                    {r.status === "Chua thu" && (
-                      <Button size="sm" className="h-7 bg-green-600 text-xs hover:bg-green-700">
-                        <Banknote className="mr-1 h-3 w-3" /> Ghi nh?n Thu
+                    {r.status === "Chưa thu" && (
+                      <Button size="sm" className="h-7 bg-green-600 text-xs hover:bg-green-700" onClick={() => handleRecordPayment(r.id)}>
+                        <Banknote className="mr-1 h-3 w-3" /> Ghi nhận Thu
                       </Button>
                     )}
                   </TableCell>
@@ -737,103 +1140,442 @@ export function ContractReceipts() {
   );
 }
 
-// B�n giao ph�ng
+// Bàn giao phòng
 export function ContractHandover() {
+  const [contracts, setContracts] = useState([
+    {
+      contractId: "CT001",
+      customerName: "Nguyễn Việt Hoàng",
+      roomName: "R101",
+      bedCount: 2,
+      handoverDate: getTodayInputValue(),
+      staffName: "Phạm Đình Bảo",
+      status: "Chưa bàn giao" as const,
+    },
+    {
+      contractId: "CT002",
+      customerName: "Vũ Kiều Oanh",
+      roomName: "R102",
+      bedCount: 2,
+      handoverDate: "2025-10-01",
+      staffName: "Nguyễn Thị Lan",
+      status: "Đã bàn giao" as const,
+      electricIndex: "120",
+      waterIndex: "45",
+      note: "Phòng sạch sẽ, thiết bị đầy đủ",
+      checklist: {
+        bed: true,
+        mattress: true,
+        personalLocker: true,
+        accessCard: true,
+        roomClean: true,
+        rulesGuided: true,
+      },
+    },
+    {
+      contractId: "CT003",
+      customerName: "Nguyễn Tiến Khang",
+      roomName: "R103",
+      bedCount: 1,
+      handoverDate: getTodayInputValue(),
+      staffName: "Trần Văn Minh",
+      status: "Chưa bàn giao" as const,
+    },
+  ]);
+
+  const [selectedContract, setSelectedContract] = useState<typeof contracts[0] | null>(null);
+
+  const [checklist, setChecklist] = useState({
+    bed: false,
+    mattress: false,
+    personalLocker: false,
+    accessCard: false,
+    roomClean: false,
+    rulesGuided: false,
+    electricityMeter: "",
+    waterMeter: "",
+    roomNotes: "",
+  });
+
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  const handleSelectContract = (contract: typeof contracts[0]) => {
+    setSelectedContract(contract);
+    setChecklist(contract.checklist || {
+      bed: contract.status === "Đã bàn giao" ? true : false,
+      mattress: contract.status === "Đã bàn giao" ? true : false,
+      personalLocker: contract.status === "Đã bàn giao" ? true : false,
+      accessCard: contract.status === "Đã bàn giao" ? true : false,
+      roomClean: contract.status === "Đã bàn giao" ? true : false,
+      rulesGuided: contract.status === "Đã bàn giao" ? true : false,
+      electricityMeter: contract.electricIndex || "",
+      waterMeter: contract.waterIndex || "",
+      roomNotes: contract.note || "",
+    });
+    setIsCompleted(contract.status === "Đã bàn giao");
+  };
+
+  const handleChecklistChange = (key: keyof typeof checklist, value: boolean | string) => {
+    setChecklist(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleComplete = () => {
+    if (!selectedContract) return;
+
+    const { bed, mattress, personalLocker, accessCard, roomClean, rulesGuided, electricityMeter, waterMeter } = checklist;
+    if (!bed || !mattress || !personalLocker || !accessCard || !roomClean || !rulesGuided) {
+      toast.error("Vui lòng kiểm tra đủ tài sản và nhập chỉ số điện/nước trước khi bàn giao.");
+      return;
+    }
+    if (!electricityMeter.trim() || parseFloat(electricityMeter) < 0) {
+      toast.error("Vui lòng nhập chỉ số điện đầu vào hợp lệ.");
+      return;
+    }
+    if (!waterMeter.trim() || parseFloat(waterMeter) < 0) {
+      toast.error("Vui lòng nhập chỉ số nước đầu vào hợp lệ.");
+      return;
+    }
+
+    const updatedContract = {
+      ...selectedContract,
+      status: "Đã bàn giao" as const,
+      electricIndex: electricityMeter,
+      waterIndex: waterMeter,
+      note: checklist.roomNotes,
+      checklist: {
+        bed,
+        mattress,
+        personalLocker,
+        accessCard,
+        roomClean,
+        rulesGuided,
+      },
+    };
+
+    setContracts(prev => prev.map(c => c.contractId === selectedContract.contractId ? updatedContract : c));
+    setSelectedContract(updatedContract);
+    setIsCompleted(true);
+    toast.success("Hoàn tất bàn giao phòng. Khách chính thức nhận phòng.");
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Bi�n b?n B�n giao ph�ng" description="Check-list t�i s?n c?p ph�t v� x�c nh?n d?i tr?ng th�i." />
+      <PageHeader title="Biên bản Bàn giao phòng" description="Check-list tài sản cấp phát và xác nhận đối trạng thái." />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="border-b border-slate-200 bg-slate-50">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Key className="h-5 w-5 text-blue-600" /> L?p bi�n b?n b�n giao (CT001)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4 text-sm">
-            <div className="mb-4 grid grid-cols-2 gap-2 rounded-md border border-slate-100 bg-slate-50 p-3">
-              <div>
-                <span className="text-slate-500">Ngu?i nh?n:</span> <br />�?ng Vi?t H�ng
-              </div>
-              <div>
-                <span className="text-slate-500">Ph�ng nh?n:</span> <br />
-                <span className="font-bold">R101 (2 giu?ng)</span>
-              </div>
-              <div>
-                <span className="text-slate-500">Ng�y b�n giao:</span> <br />05/04/2026
-              </div>
-              <div>
-                <span className="text-slate-500">Nh�n vi�n BG:</span> <br />Ph?m ��nh B?o
-              </div>
+      {/* Phần A: Danh sách hợp đồng */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Danh sách hợp đồng chờ bàn giao</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mã hợp đồng</TableHead>
+                <TableHead>Khách hàng</TableHead>
+                <TableHead>Phòng</TableHead>
+                <TableHead>Số giường</TableHead>
+                <TableHead>Ngày bàn giao</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contracts.map((contract) => (
+                <TableRow key={contract.contractId}>
+                  <TableCell className="font-medium">{contract.contractId}</TableCell>
+                  <TableCell>{contract.customerName}</TableCell>
+                  <TableCell>{contract.roomName}</TableCell>
+                  <TableCell>{contract.bedCount}</TableCell>
+                  <TableCell>{contract.handoverDate}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${contract.status === "Đã bàn giao" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                      {contract.status === "Đã bàn giao" ? <ShieldCheck className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                      {contract.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSelectContract(contract)}
+                      className={contract.status === "Đã bàn giao" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"}
+                    >
+                      {contract.status === "Đã bàn giao" ? "Xem biên bản" : "Lập biên bản"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Phần B: Biên bản bàn giao */}
+      {!selectedContract ? (
+        <Card className="border-dashed border-slate-300 bg-slate-50">
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center text-slate-500">
+              <Key className="mx-auto h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Vui lòng chọn một hợp đồng để lập hoặc xem biên bản bàn giao.</p>
             </div>
-
-            <h4 className="border-b pb-1 font-semibold text-slate-700">Check-list T�i s?n c?p ph�t</h4>
-
-            <div className="space-y-3">
-              <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
-                <input type="checkbox" className="h-4 w-4 rounded text-blue-600" />
-                <span className="flex-1">2 Th? t? thang m�y (M�: TM-01, TM-02)</span>
-              </label>
-
-              <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
-                <input type="checkbox" className="h-4 w-4 rounded text-blue-600" />
-                <span className="flex-1">2 Ch�a kh�a t? c� nh�n (T? s? 1, 2)</span>
-              </label>
-
-              <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
-                <input type="checkbox" className="h-4 w-4 rounded text-blue-600" />
-                <span className="flex-1">X�c nh?n hi?n tr?ng giu?ng, n?m s?ch s?, nguy�n v?n</span>
-              </label>
-
-              <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
-                <input type="checkbox" className="h-4 w-4 rounded text-blue-600" />
-                <span className="flex-1">
-                  Ghi nh?n ch? s? di?n d?u v�o: <Input className="ml-2 inline-block h-6 w-20 px-1 py-0 text-xs" defaultValue="150" /> kWh
-                </span>
-              </label>
-            </div>
-
-            <Button className="mt-4 h-12 w-full bg-blue-600 text-base font-bold text-white shadow-md hover:bg-blue-700">
-              <DoorOpen className="mr-2 h-5 w-5" /> Ho�n t?t B�n giao & Nh?n ph�ng
-            </Button>
           </CardContent>
         </Card>
-
-        <div className="space-y-6">
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardContent className="flex items-start gap-3 p-4">
-              <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-yellow-600" />
-              <div>
-                <h4 className="mb-1 text-sm font-bold text-yellow-800">C?p nh?t Tr?ng th�i Nh?n ph�ng</h4>
-                <p className="text-xs text-yellow-700">
-                  Ngay khi b?n nh?n "Ho�n t?t B�n giao", h? th?ng s? t? d?ng d?i tr?ng th�i 2 giu?ng thu?c ph�ng R101 th�nh <strong>"�ang thu�"</strong>. H?p d?ng CT001 ch�nh th?c c� hi?u l?c t�nh ph� luu tr�.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Card>
-            <CardHeader className="border-b border-slate-200 bg-slate-50 py-3">
-              <CardTitle className="text-sm font-semibold text-slate-700">L?ch s? b�n giao g?n d�y</CardTitle>
+            <CardHeader className="border-b border-slate-200 bg-slate-50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Key className="h-5 w-5 text-blue-600" /> Biên bản bàn giao ({selectedContract.contractId})
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="text-xs">
-                      <div className="font-bold text-slate-800">CT002 - Vu Ki?u Oanh (R102)</div>
-                      <div className="text-slate-500">�� b�n giao: 01/10/2025</div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="rounded bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700">Ho�n t?t</span>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+            <CardContent className="space-y-4 pt-4 text-sm">
+              <div className="mb-4 grid grid-cols-2 gap-2 rounded-md border border-slate-100 bg-slate-50 p-3">
+                <div>
+                  <span className="text-slate-500">Mã hợp đồng:</span> <br />
+                  <span className="font-bold">{selectedContract.contractId}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Khách hàng/người đại diện:</span> <br />
+                  <span className="font-bold">{selectedContract.customerName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Phòng nhận:</span> <br />
+                  <span className="font-bold">{selectedContract.roomName} ({selectedContract.bedCount} giường)</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Ngày bàn giao:</span> <br />
+                  <span className="font-bold">{selectedContract.handoverDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Nhân viên bàn giao:</span> <br />
+                  <span className="font-bold">{selectedContract.staffName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Trạng thái bàn giao:</span> <br />
+                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${selectedContract.status === "Đã bàn giao" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {selectedContract.status === "Đã bàn giao" ? <ShieldCheck className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                    {selectedContract.status}
+                  </span>
+                </div>
+              </div>
+
+              <h4 className="border-b pb-1 font-semibold text-slate-700">Check-list Tài sản cấp phát</h4>
+
+              <div className="space-y-3">
+                <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-blue-600"
+                    checked={checklist.bed}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("bed", e.target.checked)}
+                  />
+                  <span className="flex-1">Giường</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checklist.bed ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {checklist.bed ? "Đã kiểm tra" : "Chưa kiểm tra"}
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-blue-600"
+                    checked={checklist.mattress}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("mattress", e.target.checked)}
+                  />
+                  <span className="flex-1">Nệm</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checklist.mattress ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {checklist.mattress ? "Đã kiểm tra" : "Chưa kiểm tra"}
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-blue-600"
+                    checked={checklist.personalLocker}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("personalLocker", e.target.checked)}
+                  />
+                  <span className="flex-1">Tủ cá nhân</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checklist.personalLocker ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {checklist.personalLocker ? "Đã kiểm tra" : "Chưa kiểm tra"}
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-blue-600"
+                    checked={checklist.accessCard}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("accessCard", e.target.checked)}
+                  />
+                  <span className="flex-1">Thẻ từ/chìa khóa</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checklist.accessCard ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {checklist.accessCard ? "Đã kiểm tra" : "Chưa kiểm tra"}
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-blue-600"
+                    checked={checklist.roomClean}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("roomClean", e.target.checked)}
+                  />
+                  <span className="flex-1">Khu vực phòng sạch sẽ, đúng hiện trạng</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checklist.roomClean ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {checklist.roomClean ? "Đã kiểm tra" : "Chưa kiểm tra"}
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-3 rounded border bg-white p-2 shadow-sm transition-colors hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded text-blue-600"
+                    checked={checklist.rulesGuided}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("rulesGuided", e.target.checked)}
+                  />
+                  <span className="flex-1">Đã hướng dẫn nội quy và sử dụng tiện ích chung</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${checklist.rulesGuided ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                    {checklist.rulesGuided ? "Đã kiểm tra" : "Chưa kiểm tra"}
+                  </span>
+                </label>
+              </div>
+
+              <h4 className="border-b pb-1 font-semibold text-slate-700">Ghi nhận chỉ số điện/nước đầu vào</h4>
+
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <label className="flex-1">Chỉ số điện đầu vào (kWh):</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="w-24"
+                    value={checklist.electricityMeter}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("electricityMeter", e.target.value)}
+                    placeholder="150"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <label className="flex-1">Chỉ số nước đầu vào (m³):</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="w-24"
+                    value={checklist.waterMeter}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("waterMeter", e.target.value)}
+                    placeholder="50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ghi chú hiện trạng phòng:</label>
+                  <Input
+                    value={checklist.roomNotes}
+                    disabled={selectedContract.status === "Đã bàn giao"}
+                    onChange={(e) => handleChecklistChange("roomNotes", e.target.value)}
+                    placeholder="Ví dụ: Phòng sạch sẽ, thiết bị đầy đủ..."
+                  />
+                </div>
+              </div>
+
+              <Button
+                className="mt-4 h-12 w-full bg-blue-600 text-base font-bold text-white shadow-md hover:bg-blue-700 disabled:bg-slate-400"
+                disabled={isCompleted}
+                onClick={handleComplete}
+              >
+                <DoorOpen className="mr-2 h-5 w-5" /> {isCompleted ? "Đã hoàn tất bàn giao" : "Hoàn tất Bàn giao & Nhận phòng"}
+              </Button>
             </CardContent>
           </Card>
+
+          <div className="space-y-6">
+            {isCompleted && selectedContract.status === "Đã bàn giao" && (
+              <Card className="border-green-200 bg-green-50">
+                <CardHeader className="border-b border-green-200 bg-green-100">
+                  <CardTitle className="flex items-center gap-2 text-lg text-green-800">
+                    <CheckCircle className="h-5 w-5" /> Biên bản bàn giao phòng
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-4 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><strong>Mã hợp đồng:</strong> {selectedContract.contractId}</div>
+                    <div><strong>Khách nhận phòng:</strong> {selectedContract.customerName}</div>
+                    <div><strong>Phòng:</strong> {selectedContract.roomName} ({selectedContract.bedCount} giường)</div>
+                    <div><strong>Ngày bàn giao:</strong> {selectedContract.handoverDate}</div>
+                    <div><strong>Nhân viên bàn giao:</strong> {selectedContract.staffName}</div>
+                    <div><strong>Trạng thái:</strong> <span className="text-green-700 font-semibold">Đã bàn giao</span></div>
+                  </div>
+
+                  <div>
+                    <strong>Danh sách tài sản đã bàn giao:</strong>
+                    <ul className="mt-1 ml-4 list-disc text-xs">
+                      <li>Giường ✓</li>
+                      <li>Nệm ✓</li>
+                      <li>Tủ cá nhân ✓</li>
+                      <li>Thẻ từ/chìa khóa ✓</li>
+                      <li>Khu vực phòng sạch sẽ ✓</li>
+                      <li>Đã hướng dẫn nội quy ✓</li>
+                    </ul>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><strong>Chỉ số điện đầu:</strong> {checklist.electricityMeter} kWh</div>
+                    <div><strong>Chỉ số nước đầu:</strong> {checklist.waterMeter} m³</div>
+                  </div>
+
+                  {checklist.roomNotes && (
+                    <div>
+                      <strong>Ghi chú:</strong> {checklist.roomNotes}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="border-yellow-200 bg-yellow-50">
+              <CardContent className="flex items-start gap-3 p-4">
+                <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-yellow-600" />
+                <div>
+                  <h4 className="mb-1 text-sm font-bold text-yellow-800">Cập nhật Trạng thái Nhận phòng</h4>
+                  <p className="text-xs text-yellow-700">
+                    Ngay khi bạn nhấn "Hoàn tất Bàn giao", hệ thống sẽ tự động đổi trạng thái {selectedContract.bedCount} giường thuộc phòng {selectedContract.roomName} thành <strong>"Đang thuê"</strong>. Hợp đồng {selectedContract.contractId} chính thức có hiệu lực tính từ ngày bàn giao.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="border-b border-slate-200 bg-slate-50 py-3">
+                <CardTitle className="text-sm font-semibold text-slate-700">Lịch sử bàn giao gần đây</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="text-xs">
+                        <div className="font-bold text-slate-800">CT002 - Vũ Kiều Oanh (R102)</div>
+                        <div className="text-slate-500">Đã bàn giao: 01/10/2025</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="rounded bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700">Hoàn tất</span>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
