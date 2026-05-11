@@ -190,5 +190,5 @@ export const depositService = {
     }
 
     return response.json();
-  },
+  }
 };

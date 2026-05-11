@@ -4,6 +4,6 @@ import { requireRoles } from '../middlewares/authGuard.js';
 
 const router = express.Router();
 
-router.get('/', requireRoles('quanly', 'admin'), employeeController.getEmployees);
+router.get('/', requireRoles('sale', 'quanly', 'admin'), employeeController.getEmployees);
 
 export default router;

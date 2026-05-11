@@ -9,10 +9,11 @@ export function Login() {
 
   const handleLogin = () => {
     const userMap: Record<string, { id: string; role: string; name: string }> = {
-      admin: { id: 'NV001', role: 'admin', name: 'Admin' },
-      sale01: { id: 'NV002', role: 'sale', name: 'Sale 01' },
-      sale02: { id: 'NV005', role: 'sale', name: 'Sale 02' },
-      quanly01: { id: 'NV004', role: 'quanly', name: 'Quan ly 01' },
+      admin: { id: 'NV001', role: 'admin', name: 'Quản trị viên' },
+      sale01: { id: 'NV002', role: 'sale', name: 'Nhân viên Sale 01' },
+      sale02: { id: 'NV005', role: 'sale', name: 'Nhân viên Sale 02' },
+      quanly01: { id: 'NV004', role: 'quanly', name: 'Quản lý 01' },
+      ketoan01: { id: 'NV003', role: 'ketoan', name: 'Nhân viên Kế toán 01' },
     };
 
     const user = userMap[username.trim()] || userMap.sale01;

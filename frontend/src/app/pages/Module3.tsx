@@ -53,7 +53,6 @@ export function DepositCreate() {
           const data = await response.json();
           setCustomers(data.data || []);
         } else {
-          // Fallback - customers endpoint may not exist yet
           console.error('Failed to fetch customers:', response.statusText);
           setCustomers([]);
         }

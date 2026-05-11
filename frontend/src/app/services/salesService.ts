@@ -125,3 +125,60 @@ export const appointmentService = {
   updateAppointment: (id: string, payload: { trangThai?: string; ghiChu?: string }) =>
     apiFetch(`${API_BASE}/appointments/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
 };
+
+// ─── CHECKOUT WORKFLOW (UC22-UC25) ──────────────────────────────────────────
+
+export interface CheckoutChecklist {
+  keyReturned: boolean;
+  roomClean: boolean;
+  assetsIntact: boolean;
+  servicesPaid: boolean;
+}
+
+export interface CheckoutDamageItem {
+  description: string;
+  amount: number;
+}
+
+export interface CheckoutWorkflow {
+  id: string;
+  contractId: string;
+  customerName: string;
+  roomName: string;
+  expectedCheckoutDate: string;
+  reason: string;
+  bedCount: number;
+  depositAmount: number;
+  startDate: string;
+  contractEndDate: string;
+  stayMonths: number;
+  status: string;
+  electricStart: number;
+  waterStart: number;
+  electricEnd: number;
+  waterEnd: number;
+  unpaidRent: number;
+  unpaidService: number;
+  violationFee: number;
+  refundRate: number;
+  damageItems: CheckoutDamageItem[];
+  inspectionChecklist: CheckoutChecklist;
+  settlementData?: Record<string, unknown> | null;
+  liquidationData?: Record<string, unknown> | null;
+  liquidationDate?: string | null;
+  contractStatus?: string | null;
+  roomStatus?: string | null;
+  paymentMethod?: string | null;
+  settlementType?: string | null;
+  maHD?: string | null;
+  maPhong?: string | null;
+  maKH?: string | null;
+  maNV?: string | null;
+  inspectionNote?: string;
+}
+
+export const checkoutWorkflowService = {
+  getWorkflows: () => apiFetch(`${API_BASE}/checkouts/workflows`),
+  saveWorkflows: (workflows: CheckoutWorkflow[]) =>
+    apiFetch(`${API_BASE}/checkouts/workflows`, { method: 'PUT', body: JSON.stringify({ workflows }) }),
+};
