@@ -29,8 +29,8 @@ const ROLE_PERMISSIONS = {
     visibleGroups: ['Chung', 'Sale & Đặt cọc (Module 2 & 3)', 'Hợp đồng & Trả phòng (Module 4 & 5)']
   },
   quanly: {
-    modules: ['common', 'admin', 'contracts', 'checkout'],
-    visibleGroups: ['Chung', 'Quản trị (Module 1)', 'Hợp đồng & Trả phòng (Module 4 & 5)']
+    modules: ['common', 'admin', 'sales-deposits', 'contracts', 'checkout'],
+    visibleGroups: ['Chung', 'Quản trị (Module 1)', 'Sale & Đặt cọc (Module 2 & 3)', 'Hợp đồng & Trả phòng (Module 4 & 5)']
   },
   ketoan: {
     modules: ['common', 'sales-deposits', 'contracts-receipts', 'checkout-slips'],
@@ -66,7 +66,7 @@ const MENU_GROUPS = [
       { name: "Tra cứu phòng trống", path: "/sales/search", icon: Users, roles: ['admin', 'sale'] },
       { name: "Lịch hẹn xem phòng", path: "/sales/appointments", icon: Users, roles: ['admin', 'sale'] },
       { name: "Lập phiếu Đặt cọc", path: "/deposits/create", icon: CreditCard, roles: ['admin', 'sale'] },
-      { name: "Quản lý Phiếu cọc", path: "/deposits/manage", icon: CreditCard, roles: ['admin', 'sale', 'ketoan'] },
+      { name: "Quản lý Phiếu cọc", path: "/deposits/manage", icon: CreditCard, roles: ['admin', 'sale', 'quanly', 'ketoan'] },
     ]
   },
   {

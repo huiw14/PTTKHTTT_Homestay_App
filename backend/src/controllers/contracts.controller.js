@@ -33,7 +33,7 @@ const mapContract = (item) => ({
   ngayKetThuc: item.ngayKetThuc,
   kyThanhToan: item.kyThanhToan,
   trangThai: item.trangThai,
-  anhHD: item.anhHD,
+  anhHD: item.anhHD ?? null,
   khachHangName: item.phieuCoc?.khachHang?.hoTen || null,
   tienCoc: item.phieuCoc?.tienCoc || null,
   roomSummary: normalizeRooms(item.phieuCoc),
@@ -174,14 +174,11 @@ export const createContract = async (req, res) => {
       // Nghiệp vụ hiện tại: ngày kết thúc được tính theo số tháng của kỳ thanh toán.
       const ngayKetThuc = addMonths(startDate, paymentCycle);
 
-      // Handle file upload - store either the file URL or the original string
       let anhHDValue = null;
       if (anhHD) {
-        // If anhHD is an object (from file upload), store the URL
         if (typeof anhHD === 'object' && anhHD.url) {
           anhHDValue = anhHD.url;
         } else if (typeof anhHD === 'string') {
-          // If it's already a string, use it as is
           anhHDValue = anhHD;
         }
       }
