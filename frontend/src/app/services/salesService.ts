@@ -1,25 +1,12 @@
+import { getAuthHeaders } from './authHeaders';
+
 const API_BASE = 'http://localhost:5000/api';
 
-function getAuthHeaders() {
-  if (typeof window === 'undefined') return {};
-
-  const userRaw = window.localStorage.getItem('currentUser');
-  if (!userRaw) return {};
-
-  try {
-    const user = JSON.parse(userRaw);
-    if (!user?.id || !user?.role) return {};
-    return {
-      'x-user-id': String(user.id),
-      'x-user-role': String(user.role),
-    };
-  } catch {
-    return {};
-  }
-}
-
 async function apiFetch(url: string, options?: RequestInit) {
-  const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, ...options });
+  const res = await fetch(url, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders(), ...options?.headers },
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `Request failed: ${res.statusText}`);

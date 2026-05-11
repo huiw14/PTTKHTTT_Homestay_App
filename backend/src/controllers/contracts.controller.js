@@ -83,7 +83,7 @@ export const getEligibleDeposits = async (_req, res) => {
   try {
     const deposits = await prisma.phieuCoc.findMany({
       where: {
-        trangThai: "DaThanhToan",
+        trangThai: "DaDuyet",
         hopDong: {
           none: {},
         },
@@ -156,7 +156,7 @@ export const createContract = async (req, res) => {
         throw new Error("DEPOSIT_NOT_FOUND");
       }
 
-      if (deposit.trangThai !== "DaThanhToan") {
+      if (deposit.trangThai !== "DaDuyet") {
         throw new Error("DEPOSIT_NOT_PAID");
       }
 

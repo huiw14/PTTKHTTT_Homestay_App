@@ -40,6 +40,7 @@ import {
   CalendarDays,
   X,
 } from "lucide-react";
+import { getAuthHeaders } from "../services/authHeaders";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 
@@ -506,13 +507,8 @@ export function ContractCreate() {
     const fetchEligibleDeposits = async () => {
       setLoadingDeposits(true);
       try {
-        const userId = localStorage.getItem('userId') || 'NV001';
-        const userRole = localStorage.getItem('userRole') || 'sale';
         const response = await fetch(`${API_BASE_URL}/api/contracts/eligible-deposits`, {
-          headers: {
-            'x-user-id': userId,
-            'x-user-role': userRole,
-          },
+          headers: getAuthHeaders(),
         });
         if (!response.ok) {
           const errorBody = await response.json().catch(() => ({}));
@@ -591,9 +587,6 @@ export function ContractCreate() {
     try {
       setSubmitting(true);
 
-      const userId = localStorage.getItem('userId') || 'NV001';
-      const userRole = localStorage.getItem('userRole') || 'sale';
-      
       // Create FormData to handle file upload
       const formData = new FormData();
       formData.append('maPC', form.depositId);
@@ -610,10 +603,7 @@ export function ContractCreate() {
 
       const response = await fetch(`${API_BASE_URL}/api/contracts`, {
         method: "POST",
-        headers: {
-          'x-user-id': userId,
-          'x-user-role': userRole,
-        },
+        headers: getAuthHeaders(),
         body: formData,
       });
 
@@ -851,13 +841,8 @@ export function ContractManage() {
     const fetchContracts = async () => {
       setLoading(true);
       try {
-        const userId = localStorage.getItem('userId') || 'NV001';
-        const userRole = localStorage.getItem('userRole') || 'sale';
         const response = await fetch(`${API_BASE_URL}/api/contracts`, {
-          headers: {
-            'x-user-id': userId,
-            'x-user-role': userRole,
-          },
+          headers: getAuthHeaders(),
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {

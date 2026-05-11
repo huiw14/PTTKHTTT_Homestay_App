@@ -107,7 +107,9 @@ export function Layout() {
   }, []);
 
   const handleLogout = () => {
-    // Xóa token/session ở đây (nếu có)
+    window.localStorage.removeItem("currentUser");
+    window.localStorage.removeItem("userId");
+    window.localStorage.removeItem("userRole");
     navigate("/login");
   };
 

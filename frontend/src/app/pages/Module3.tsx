@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useDepositStore } from "../hooks/useDepositStore";
 import { transformBackendDeposit, transformToBackendPayload, mapStatusToBackend } from "../utils/depositTransform";
 import { depositService } from "../services/depositService";
+import { getAuthHeaders, getCurrentUser } from "../services/authHeaders";
 
 const PageHeader = ({ title, description }: { title: string, description: string }) => (
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -39,19 +40,20 @@ export function DepositCreate() {
     const fetchCustomers = async () => {
       try {
         setLoadingCustomers(true);
-        const response = await depositService.getAvailableRooms('giường'); // Test auth first
-        const customersResponse = await fetch('http://localhost:5000/api/customers', {
-          headers: {
+        const API_BASE = 'http://localhost:5000/api';
+        
+        const response = await fetch(`${API_BASE}/customers`, {
+          headers: { 
             'Content-Type': 'application/json',
-            ...getDepositAuthHeaders(),
+            ...getAuthHeaders(),
           },
         });
         
-        if (customersResponse.ok) {
-          const data = await customersResponse.json();
+        if (response.ok) {
+          const data = await response.json();
           setCustomers(data.data || []);
         } else {
-          console.error('Failed to fetch customers:', customersResponse.statusText);
+          console.error('Failed to fetch customers:', response.statusText);
           setCustomers([]);
         }
       } catch (error) {
@@ -61,30 +63,6 @@ export function DepositCreate() {
         setLoadingCustomers(false);
       }
     };
-
-    function getDepositAuthHeaders() {
-      // Try new format first (currentUser JSON)
-      const userRaw = localStorage.getItem('currentUser');
-      if (userRaw) {
-        try {
-          const user = JSON.parse(userRaw);
-          if (user?.id && user?.role) {
-            return {
-              'x-user-id': String(user.id),
-              'x-user-role': String(user.role),
-            };
-          }
-        } catch {}
-      }
-
-      // Fallback to old format
-      const userId = localStorage.getItem('userId') || 'NV001';
-      const userRole = localStorage.getItem('userRole') || 'sale';
-      return {
-        'x-user-id': userId,
-        'x-user-role': userRole,
-      };
-    }
     
     fetchCustomers();
   }, []);
@@ -198,7 +176,7 @@ export function DepositCreate() {
       // Call API
       const payload: any = {
         maKH: selectedCustomer,
-        maNV: "NV001", // Current user (mock)
+        maNV: getCurrentUser().id,
         maCN: "CN001", // Current branch (mock)
         tienCoc: totalDeposit,
         beds: depositType === "giường" ? selectedBedIds : [], // Only for bed deposits

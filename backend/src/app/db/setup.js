@@ -35,8 +35,8 @@ const statements = [
   `CREATE OR REPLACE FUNCTION fn_reset_giuong_khi_huy_coc()
    RETURNS TRIGGER AS $$
    BEGIN
-     IF NEW."trangThai" IN ('DaHuy', 'TuDongHuy', 'HuyThuCong')
-        AND OLD."trangThai" NOT IN ('DaHuy', 'TuDongHuy', 'HuyThuCong') THEN
+     IF NEW."trangThai" = 'DaHuy'
+        AND OLD."trangThai" != 'DaHuy' THEN
        UPDATE "Giuong" g
        SET "trangThai" = 'Trong'
        FROM "ChiTietPhieuCoc" ct
