@@ -174,6 +174,18 @@ export const createContract = async (req, res) => {
       // Nghiệp vụ hiện tại: ngày kết thúc được tính theo số tháng của kỳ thanh toán.
       const ngayKetThuc = addMonths(startDate, paymentCycle);
 
+      // Handle file upload - store either the file URL or the original string
+      let anhHDValue = null;
+      if (anhHD) {
+        // If anhHD is an object (from file upload), store the URL
+        if (typeof anhHD === 'object' && anhHD.url) {
+          anhHDValue = anhHD.url;
+        } else if (typeof anhHD === 'string') {
+          // If it's already a string, use it as is
+          anhHDValue = anhHD;
+        }
+      }
+
       const contract = await tx.hopDong.create({
         data: {
           maHD,
@@ -184,7 +196,7 @@ export const createContract = async (req, res) => {
           ngayKetThuc,
           kyThanhToan: paymentCycle,
           trangThai: "DangHieuLuc",
-          anhHD: anhHD || null,
+          anhHD: anhHDValue,
         },
         include: {
           thanhVien: true,
