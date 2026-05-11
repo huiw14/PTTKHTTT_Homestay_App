@@ -229,6 +229,7 @@ model HopDong {
   ngayKetThuc DateTime @db.Date
   kyThanhToan Int // số tháng/kỳ
   trangThai   String   @db.VarChar(20) // "DangHieuLuc" | "HetHan" | "DaThanhLy"
+  anhHD       String?  @db.VarChar(255)
 
   phieuCoc        PhieuCoc          @relation(fields: [maPC], references: [maPC])
   nhanVien        NhanVien          @relation(fields: [maNV], references: [maNV])
